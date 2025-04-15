@@ -11,28 +11,19 @@ import (
 	"github.com/royalcat/easy-transcoder/assets"
 	"github.com/royalcat/easy-transcoder/internal/config"
 	"github.com/royalcat/easy-transcoder/internal/processor"
-	"github.com/royalcat/easy-transcoder/internal/profile"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/pages"
 )
 
 func main() {
-
-	config := config.Config{
-		Profiles: []profile.Profile{
-			{
-				Name: "H264",
-				Params: map[string]string{
-					"c:v":    "libx264",
-					"preset": "ultrafast",
-					"c:a":    "copy",
-				},
-			},
-		},
+	config, err := config.ParseConfig("config.yaml")
+	if err != nil {
+		fmt.Println("Error parsing config:", err)
+		return
 	}
 
 	q := processor.NewQueue(config)
-	q.Start()
+	q.StartWorker()
 
 	s := &server{
 		Config: config,

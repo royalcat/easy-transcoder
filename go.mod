@@ -12,6 +12,11 @@ require (
 	github.com/a-h/templ v0.3.857
 	github.com/axzilla/templui v0.52.0
 	github.com/dustin/go-humanize v1.0.1
+	github.com/knadh/koanf/parsers/yaml v1.0.0
+	github.com/knadh/koanf/providers/env v1.1.0
+	github.com/knadh/koanf/providers/file v1.2.0
+	github.com/knadh/koanf/providers/structs v1.0.0
+	github.com/knadh/koanf/v2 v2.2.0
 	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
@@ -31,12 +36,17 @@ require (
 	github.com/cli/safeexec v1.0.1 // indirect
 	github.com/creack/pty v1.1.23 // indirect
 	github.com/fatih/color v1.17.0 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.134.3 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
@@ -47,8 +57,9 @@ require (
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.25.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

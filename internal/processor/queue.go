@@ -26,7 +26,7 @@ func NewQueue(config config.Config) *Processor {
 	}
 }
 
-func (q *Processor) Start() {
+func (q *Processor) StartWorker() {
 	go func() {
 		for range time.Tick(time.Second) {
 			if len(q.tasks) == 0 {
