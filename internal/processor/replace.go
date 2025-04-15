@@ -9,6 +9,8 @@ func (q *Processor) ResolveTask(task Task, replace bool) {
 	if !replace {
 		task.Status = TaskStatusCompleted
 		q.updateTask(task)
+		os.Remove(task.TempFile)
+		return
 	}
 
 	err := replaceFile(task.TempFile, task.Input)
@@ -18,6 +20,8 @@ func (q *Processor) ResolveTask(task Task, replace bool) {
 		q.updateTask(task)
 		return
 	}
+
+	os.Remove(task.TempFile)
 
 	task.Status = TaskStatusCompleted
 	q.updateTask(task)
