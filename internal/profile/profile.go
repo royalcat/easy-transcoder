@@ -8,8 +8,8 @@ import (
 
 // an ffmpeg transcoding profile
 type Profile struct {
-	Name   string
-	Params map[string]string
+	Name   string            `koanf:"name"`
+	Params map[string]string `koanf:"params"`
 }
 
 func (p *Profile) Compile(input, output, progressSock string) *exec.Cmd {
