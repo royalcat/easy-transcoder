@@ -1,4 +1,4 @@
-module github.com/royalcat/easy-transcode
+module github.com/royalcat/easy-transcoder
 
 go 1.24.2
 
@@ -10,7 +10,9 @@ tool (
 
 require (
 	github.com/a-h/templ v0.3.857
-	github.com/axzilla/templui v0.50.0
+	github.com/axzilla/templui v0.52.0
+	github.com/dustin/go-humanize v1.0.1
+	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
 require (
@@ -28,7 +30,6 @@ require (
 	github.com/cli/browser v1.3.0 // indirect
 	github.com/cli/safeexec v1.0.1 // indirect
 	github.com/creack/pty v1.1.23 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
@@ -42,7 +43,6 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/tdewolff/parse/v2 v2.7.15 // indirect
-	github.com/u2takey/ffmpeg-go v0.5.0 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/net v0.37.0 // indirect

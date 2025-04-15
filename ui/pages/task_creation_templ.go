@@ -11,9 +11,9 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/axzilla/templui/component/button"
 	"github.com/axzilla/templui/component/separator"
-	"github.com/royalcat/easy-transcode/internal/profile"
-	"github.com/royalcat/easy-transcode/ui/elements"
-	"github.com/royalcat/easy-transcode/ui/layouts"
+	"github.com/royalcat/easy-transcoder/internal/profile"
+	"github.com/royalcat/easy-transcoder/ui/elements"
+	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
 func TaskCreation(profiles []profile.Profile) templ.Component {

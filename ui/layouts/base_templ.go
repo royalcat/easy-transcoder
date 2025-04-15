@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"github.com/axzilla/templui/helper"
-	"github.com/royalcat/easy-transcode/ui/modules"
+	"github.com/royalcat/easy-transcoder/ui/modules"
 )
 
 func themeSwitcherScript() templ.Component {

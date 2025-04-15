@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import "github.com/axzilla/templui/component/selectbox"
-import "github.com/royalcat/easy-transcode/internal/profile"
+import "github.com/royalcat/easy-transcoder/internal/profile"
 
 func ProfileSelector(profiles []profile.Profile) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

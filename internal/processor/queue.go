@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/royalcat/easy-transcode/internal/config"
-	"github.com/royalcat/easy-transcode/internal/profile"
+	"github.com/royalcat/easy-transcoder/internal/config"
+	"github.com/royalcat/easy-transcoder/internal/profile"
 )
 
 type Processor struct {

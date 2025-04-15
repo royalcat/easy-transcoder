@@ -8,18 +8,15 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/royalcat/easy-transcode/assets"
-	"github.com/royalcat/easy-transcode/internal/config"
-	"github.com/royalcat/easy-transcode/internal/processor"
-	"github.com/royalcat/easy-transcode/internal/profile"
-	"github.com/royalcat/easy-transcode/ui/elements"
-	"github.com/royalcat/easy-transcode/ui/pages"
+	"github.com/royalcat/easy-transcoder/assets"
+	"github.com/royalcat/easy-transcoder/internal/config"
+	"github.com/royalcat/easy-transcoder/internal/processor"
+	"github.com/royalcat/easy-transcoder/internal/profile"
+	"github.com/royalcat/easy-transcoder/ui/elements"
+	"github.com/royalcat/easy-transcoder/ui/pages"
 )
 
 func main() {
-	mux := http.NewServeMux()
-
-	assetsRoutes(mux)
 
 	config := config.Config{
 		Profiles: []profile.Profile{
@@ -52,6 +49,10 @@ func main() {
 		)
 	}
 
+	mux := http.NewServeMux()
+
+	assetsRoutes(mux)
+
 	mux.Handle("GET /", templHandler(pages.Root(config.Profiles)))
 	mux.Handle("GET /resolver", http.HandlerFunc(s.pageResolver))
 	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(config.Profiles)))
@@ -63,6 +64,10 @@ func main() {
 	mux.Handle("POST /submit/task", http.HandlerFunc(s.submitTask))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
 	// mux.Handle("GET /elements/profileselector", http.HandlerFunc(s.getprofile))
+
+	// handler := middleware.WithCSP(middleware.CSPConfig{
+	// 	ScriptSrc: []string{"cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com"},
+	// })(mux)
 
 	fmt.Println("Listening on :8080")
 	http.ListenAndServe(":8080", mux)
@@ -216,19 +221,12 @@ func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {
 // }
 
 func assetsRoutes(mux *http.ServeMux) {
-	var isDevelopment = true
+
+	fs := http.FileServer(http.FS(assets.Assets))
 
 	assetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isDevelopment {
-			w.Header().Set("Cache-Control", "no-store")
-		}
 
-		var fs http.Handler
-		if isDevelopment {
-			fs = http.FileServer(http.Dir("../assets"))
-		} else {
-			fs = http.FileServer(http.FS(assets.Assets))
-		}
+		w.Header().Set("Cache-Control", "no-store")
 
 		fs.ServeHTTP(w, r)
 	})

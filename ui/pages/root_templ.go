@@ -12,9 +12,9 @@ import (
 	"github.com/axzilla/templui/component/button"
 	"github.com/axzilla/templui/component/label"
 	"github.com/axzilla/templui/component/modal"
-	"github.com/royalcat/easy-transcode/internal/profile"
-	"github.com/royalcat/easy-transcode/ui/elements"
-	"github.com/royalcat/easy-transcode/ui/layouts"
+	"github.com/royalcat/easy-transcoder/internal/profile"
+	"github.com/royalcat/easy-transcoder/ui/elements"
+	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
 func Root(profiles []profile.Profile) templ.Component {
