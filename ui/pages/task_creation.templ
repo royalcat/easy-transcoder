@@ -1,0 +1,38 @@
+package pages
+
+import (
+	"github.com/axzilla/templui/component/button"
+	"github.com/axzilla/templui/component/separator"
+	"github.com/royalcat/easy-transcode/internal/profile"
+	"github.com/royalcat/easy-transcode/ui/elements"
+	"github.com/royalcat/easy-transcode/ui/layouts"
+)
+
+templ TaskCreation(profiles []profile.Profile) {
+	@layouts.BaseLayout() {
+		<div class="flex flex-col gap-6">
+			<div class="flex gap-6">
+				<div class="flex-1 m-10">
+					@elements.FilePicker("./media")
+				</div>
+				@separator.Separator(separator.Props{
+					Orientation: separator.OrientationVertical,
+					Class:       "mx-4",
+				})
+				<div class="flex-1 m-10">
+					@elements.ProfileSelector(profiles)
+				</div>
+				// @elements.FileInfo("")
+				// <div class="flex h-full"></div>
+			</div>
+			<div class="flex justify-center">
+				@button.Button(button.Props{
+					ID:    "create-task",
+					Class: "max-w-32",
+				}) {
+					Create Task
+				}
+			</div>
+		</div>
+	}
+}

@@ -1,0 +1,62 @@
+package layouts
+
+import (
+	"github.com/axzilla/templui/helper"
+	"github.com/royalcat/easy-transcode/ui/modules"
+)
+
+templ themeSwitcherScript() {
+	{{ handle := templ.NewOnceHandle() }}
+	@handle.Once() {
+		<script nonce={ templ.GetNonce(ctx) }>
+			// Initial theme setup
+			document.documentElement.classList.toggle('dark', localStorage.getItem('appTheme') === 'dark');
+
+			document.addEventListener('alpine:init', () => {
+				Alpine.data('themeHandler', () => ({
+					isDark: localStorage.getItem('appTheme') === 'dark',
+					themeClasses() {
+						return this.isDark ? 'text-white' : 'bg-white text-black'
+					},
+					toggleTheme() {
+						this.isDark = !this.isDark;
+						localStorage.setItem('appTheme', this.isDark ? 'dark' : 'light');
+						document.documentElement.classList.toggle('dark', this.isDark);
+					}
+				}))
+			})
+		</script>
+	}
+}
+
+templ BaseLayout() {
+	<!DOCTYPE html>
+	<html lang="en" class="h-full dark">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<!-- Tailwind CSS (output) -->
+			<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+			<link href="/assets/css/output.css" rel="stylesheet"/>
+			<!-- Alpine.js -->
+			<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+			<!-- HTMX -->
+			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+			<!-- Font Awesome -->
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
+			<!-- Component scripts -->
+			@helper.ComponentScripts()
+			<!-- Theme switcher script -->
+			@themeSwitcherScript()
+		</head>
+		<body
+			x-data="themeHandler"
+			x-bind:class="themeClasses"
+		>
+			@modules.Navbar()
+			<div class="m-24">
+				{ children... }
+			</div>
+		</body>
+	</html>
+}

@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/easy-transcoder",
+            "cwd": "${workspaceFolder}/bin"
+        },
+        {
+            "name": "Attach Debugger",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "host": "localhost",
+            "port": 2345,
+        }
+    ]
+}

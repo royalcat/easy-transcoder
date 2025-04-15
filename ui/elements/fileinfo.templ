@@ -1,0 +1,23 @@
+package elements
+
+import (
+	"github.com/dustin/go-humanize"
+	"os"
+	"time"
+)
+
+templ FileInfo(p string) {
+	{{
+	info, err := os.Stat(p)
+	if err != nil {
+		return err
+	}
+	}}
+	<div class="flex flex-col gap-4 max-w-md">
+		<h1>{ info.Name() }</h1>
+		Size: { humanize.Bytes(uint64(info.Size())) }
+		<br/>
+		Modified: { info.ModTime().Format(time.DateTime) }
+		<br/>
+	</div>
+}

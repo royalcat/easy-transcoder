@@ -1,0 +1,82 @@
+package elements
+
+import (
+	"github.com/axzilla/templui/component/button"
+	"github.com/axzilla/templui/component/input"
+	"github.com/axzilla/templui/icon"
+	"net/url"
+	"os"
+	"path"
+)
+
+templ FilePicker(p string) {
+	<div id="filepicker">
+		{{
+			info, err := os.Stat(p)
+			if err != nil {
+				return err
+			}
+		}}
+		<div class="flex flex-col gap-4">
+			<div class="flex flex-row gap-2">
+				@button.Button(button.Props{
+					Size:     button.SizeIcon,
+					Variant:  button.VariantGhost,
+					Class:    "flex",
+					HxGet:    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)),
+					HxTarget: "#filepicker",
+					HxSwap:   "outerHTML",
+				}) {
+					@icon.ArrowLeft()
+				}
+				@input.Input(input.Props{
+					ID:          "filepath",
+					Type:        "text",
+					Name:        "filepath",
+					Class:       "flex",
+					Placeholder: "Enter file path",
+					Value:       p,
+					Required:    true,
+				})
+			</div>
+			<div class="h-96 overflow-auto">
+				if info.IsDir() {
+					@filelist(p)
+				} else {
+					@FileInfo(p)
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ filelist(p string) {
+	{{
+		files, err := os.ReadDir(p)
+		if err != nil {
+			return err
+		}
+	}}
+	<ul class="flex flex-col gap-3">
+		for _, file := range files {
+			{{
+				urlpath := url.QueryEscape(path.Join(p, file.Name()))
+			}}
+			if file.IsDir() {
+				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+					<li class="flex items-center gap-2">
+						@icon.Folder()
+						<div class="flex hover:underline">{ file.Name() }</div>
+					</li>
+				</a>
+			} else {
+				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+					<li class="flex items-center gap-2">
+						@icon.File()
+						<div class="flex hover:underline">{ file.Name() }</div>
+					</li>
+				</a>
+			}
+		}
+	</ul>
+}

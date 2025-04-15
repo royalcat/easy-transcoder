@@ -1,0 +1,82 @@
+package pages
+
+import (
+	"github.com/axzilla/templui/component/button"
+	"github.com/axzilla/templui/component/label"
+	"github.com/axzilla/templui/component/modal"
+	"github.com/royalcat/easy-transcode/internal/profile"
+	"github.com/royalcat/easy-transcode/ui/elements"
+	"github.com/royalcat/easy-transcode/ui/layouts"
+)
+
+templ Root(profiles []profile.Profile) {
+	@layouts.BaseLayout() {
+		<div class="flex flex-col gap-10">
+			@createTaskModalButton(profiles)
+			<div hx-get="/elements/queue" hx-trigger="load, every 2s"></div>
+		</div>
+	}
+}
+
+templ createTaskModalButton(profiles []profile.Profile) {
+	@modal.Trigger(modal.TriggerProps{
+		ModalID: "create-task",
+	}) {
+		@button.Button() {
+			Create Task
+		}
+	}
+	@modal.Modal(modal.Props{
+		ID:    "create-task",
+		Class: "max-w-2xl",
+	}) {
+		<form hx-post="/submit/task" hx-swap="none">
+			@modal.Header() {
+				Create Task
+			}
+			@modal.Body(modal.BodyProps{
+				Class: "flex flex-col gap-4",
+			}) {
+				<div class="flex flex-col gap-2">
+					@label.Label(label.Props{
+						Class: "text-lg font-semibold",
+					}) {
+						Profile
+					}
+					@elements.ProfileSelector(profiles)
+				</div>
+				<div class="flex flex-col gap-2">
+					@label.Label(label.Props{
+						Class: "text-lg font-semibold",
+					}) {
+						File
+					}
+					@elements.FilePicker("./media")
+				</div>
+			}
+			@modal.Footer() {
+				<div class="flex gap-4">
+					@modal.Close(modal.CloseProps{
+						ModalID: "create-task",
+					}) {
+						@button.Button(button.Props{
+							Variant: button.VariantSecondary,
+							Type:    "button",
+						}) {
+							Cancel
+						}
+					}
+					@modal.Close(modal.CloseProps{
+						ModalID: "create-task",
+					}) {
+						@button.Button(button.Props{
+							Type: "submit",
+						}) {
+							Submit
+						}
+					}
+				</div>
+			}
+		</form>
+	}
+}

@@ -1,0 +1,62 @@
+package pages
+
+import (
+	"github.com/axzilla/templui/component/button"
+	"github.com/axzilla/templui/component/separator"
+	"github.com/axzilla/templui/component/spinner"
+	"github.com/royalcat/easy-transcode/ui/elements"
+	"github.com/royalcat/easy-transcode/ui/layouts"
+	"net/url"
+)
+
+templ Resolver(task elements.TaskState) {
+	@layouts.BaseLayout() {
+		<div class="flex flex-col gap-10">
+			@resolveMenu(task.ID, task.InputFile, task.TempFile)
+		</div>
+	}
+}
+
+templ resolveMenu(taskId, inputFile, tempFile string) {
+	<form hx-post="/submit/resolve" hx-indicator="#spinner">
+		<input type="hidden" name="taskid" value={ taskId }/>
+		<div class="flex flex-row flex-nowrap gap-4">
+			<div id="input-fileinfo" hx-get={ "/elements/fileinfo?path=" + url.QueryEscape(inputFile) } hx-trigger="load" hx-target="#input-fileinfo" hx-swap="innerHTML">
+				@elements.FileInfo(inputFile)
+			</div>
+			@separator.Separator(separator.Props{
+				Orientation: separator.OrientationVertical,
+			})
+			<div id="temp-fileinfo" hx-get={ "/elements/fileinfo?path=" + url.QueryEscape(tempFile) } hx-trigger="load" hx-target="#temp-fileinfo" hx-swap="innerHTML">
+				@elements.FileInfo(tempFile)
+			</div>
+		</div>
+		<div class="flex gap-2">
+			@button.Button(button.Props{
+				Type: "submit",
+				Attributes: templ.Attributes{
+					"name":  "replace",
+					"value": "false",
+				},
+			}) {
+				Reject
+			}
+			@button.Button(button.Props{
+				Type: "submit",
+				Attributes: templ.Attributes{
+					"name":  "replace",
+					"value": "true",
+				},
+			}) {
+				Replace
+			}
+		</div>
+	</form>
+	@spinner.Spinner(spinner.Props{
+		ID:    "spinner",
+		Class: "hidden",
+		Size:  spinner.SizeLg,
+	}) {
+		Loading...
+	}
+}

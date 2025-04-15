@@ -1,0 +1,118 @@
+package elements
+
+import (
+	"github.com/axzilla/templui/component/button"
+	"github.com/axzilla/templui/component/label"
+	"github.com/axzilla/templui/component/progress"
+	"github.com/axzilla/templui/component/tooltip"
+	"github.com/axzilla/templui/icon"
+	"github.com/royalcat/easy-transcode/internal/processor"
+)
+
+type TaskState struct {
+	ID       string
+	Preset   string
+	FileName string
+
+	Status   processor.TaskStatus
+	Progress float64
+
+	// for resolution
+	InputFile string
+	TempFile  string
+}
+
+templ Queue(tasks []TaskState) {
+	<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+		for _, task := range tasks {
+			@taskCard(task)
+		}
+	</div>
+}
+
+templ taskCard(task TaskState) {
+	<div class="min-w-sm max-w-2xl h-80 rounded-lg border text-card-foreground bg-card p-12 shadow-xs">
+		<div class="flex flex-col gap-2 h-full w-full">
+			<div class="flex flex-none">
+				@label.Label(label.Props{
+					Class: "text-lg font-semibold",
+				}) {
+					{ task.FileName }
+				}
+			</div>
+			<div class="flex grow">
+				<div class="flex flex-col w-full">
+					<p>ID: { task.ID }</p>
+					<p>Preset: { task.Preset }</p>
+				</div>
+			</div>
+			<div class="flex-none w-full">
+				switch task.Status {
+					case processor.TaskStatusPending:
+						<div class="flex flex-row-reverse">
+							@button.Button(button.Props{
+								Variant: button.VariantDestructive,
+							}) {
+								Cancel
+							}
+						</div>
+					case processor.TaskStatusWaitingForResolution:
+						<div class="flex flex-row-reverse">
+							@button.Button(button.Props{
+								Variant: button.VariantDefault,
+								Href:    "/resolver?taskid=" + task.ID,
+							}) {
+								Resolve
+							}
+						</div>
+					case processor.TaskStatusProcessing:
+						<div class="flex flex-row gap-8">
+							@progress.Progress(progress.Props{
+								Value:     int(task.Progress * 100),
+								Variant:   progress.VariantSuccess,
+								ShowValue: true,
+								Label:     "Processing",
+							})
+							@tooltip.Tooltip() {
+								@tooltip.Trigger() {
+									@button.Button(button.Props{
+										Variant: button.VariantDestructive,
+										Size:    button.SizeIcon,
+									}) {
+										@icon.X()
+									}
+								}
+								@tooltip.Content() {
+									Cancel
+								}
+							}
+						</div>
+					case processor.TaskStatusCompleted:
+						<div class="flex flex-row-reverse">
+							@label.Label(label.Props{
+								Class: "text-lg font-semibold",
+							}) {
+								Completed
+							}
+						</div>
+					case processor.TaskStatusFailed:
+						<div class="flex flex-row-reverse">
+							@label.Label(label.Props{
+								Class: "text-lg font-semibold",
+							}) {
+								Failed
+							}
+						</div>
+					default:
+						<div class="flex flex-row-reverse">
+							@label.Label(label.Props{
+								Class: "text-lg font-semibold",
+							}) {
+								Unknow task status: { string(task.Status) }
+							}
+						</div>
+				}
+			</div>
+		</div>
+	</div>
+}
