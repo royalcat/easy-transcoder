@@ -18,7 +18,7 @@ templ Resolver(task elements.TaskState) {
 }
 
 templ resolveMenu(taskId, inputFile, tempFile string) {
-	<form hx-post="/submit/resolve" hx-indicator="#spinner">
+	<form hx-post="/submit/resolve" hx-indicator="#spinner" hx-swap="innerHTML">
 		<input type="hidden" name="taskid" value={ taskId }/>
 		<div class="flex flex-row flex-nowrap gap-4">
 			<div id="input-fileinfo" hx-get={ "/elements/fileinfo?path=" + url.QueryEscape(inputFile) } hx-trigger="load" hx-target="#input-fileinfo" hx-swap="innerHTML">
@@ -52,11 +52,9 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 			}
 		</div>
 	</form>
-	@spinner.Spinner(spinner.Props{
-		ID:    "spinner",
-		Class: "hidden",
-		Size:  spinner.SizeLg,
-	}) {
-		Loading...
-	}
+	<span id="spinner" class="hidden">
+		@spinner.Spinner(spinner.Props{
+			Size: spinner.SizeLg,
+		})
+	</span>
 }

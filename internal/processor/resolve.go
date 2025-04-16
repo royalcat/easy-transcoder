@@ -3,9 +3,12 @@ package processor
 import (
 	"io"
 	"os"
+	"time"
 )
 
 func (q *Processor) ResolveTask(task Task, replace bool) {
+	time.Sleep(5 * time.Second)
+
 	if !replace {
 		task.Status = TaskStatusCompleted
 		q.updateTask(task)
