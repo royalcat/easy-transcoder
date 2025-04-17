@@ -1,10 +1,69 @@
 package elements
 
 import (
+	"encoding/json"
 	"github.com/dustin/go-humanize"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
+
+// FFProbeData represents the structure of ffprobe output
+type FFProbeData struct {
+	Format struct {
+		Filename       string            `json:"filename"`
+		NBStreams      int               `json:"nb_streams"`
+		NBPrograms     int               `json:"nb_programs"`
+		FormatName     string            `json:"format_name"`
+		FormatLongName string            `json:"format_long_name"`
+		Duration       string            `json:"duration"`
+		Size           string            `json:"size"`
+		BitRate        string            `json:"bit_rate"`
+		Tags           map[string]string `json:"tags"`
+	} `json:"format"`
+	Streams []struct {
+		Index          int               `json:"index"`
+		CodecName      string            `json:"codec_name"`
+		CodecLongName  string            `json:"codec_long_name"`
+		CodecType      string            `json:"codec_type"`
+		CodecTagString string            `json:"codec_tag_string"`
+		CodecTag       string            `json:"codec_tag"`
+		Width          int               `json:"width,omitempty"`
+		Height         int               `json:"height,omitempty"`
+		SampleRate     string            `json:"sample_rate,omitempty"`
+		Channels       int               `json:"channels,omitempty"`
+		ChannelLayout  string            `json:"channel_layout,omitempty"`
+		BitsPerSample  int               `json:"bits_per_sample,omitempty"`
+		RFrameRate     string            `json:"r_frame_rate"`
+		AvgFrameRate   string            `json:"avg_frame_rate"`
+		TimeBase       string            `json:"time_base"`
+		DurationTs     int64             `json:"duration_ts"`
+		Duration       string            `json:"duration"`
+		BitRate        string            `json:"bit_rate"`
+		Tags           map[string]string `json:"tags"`
+	} `json:"streams"`
+}
+
+// Helper function to format duration in HH:MM:SS format
+func formatDuration(seconds float64) string {
+	h := int(seconds / 3600)
+	m := int((seconds - float64(h*3600)) / 60)
+	s := int(seconds) % 60
+
+	return strconv.Itoa(h) + ":" +
+		padZero(strconv.Itoa(m)) + ":" +
+		padZero(strconv.Itoa(s))
+}
+
+// Helper function to pad with zero
+func padZero(s string) string {
+	if len(s) < 2 {
+		return "0" + s
+	}
+	return s
+}
 
 templ FileInfo(p string) {
 	{{
@@ -12,12 +71,70 @@ templ FileInfo(p string) {
 	if err != nil {
 		return err
 	}
+
+	// Run ffprobe on media file
+	var probeData FFProbeData
+	// Only probe the file if it exists and is not a directory
+	if !info.IsDir() {
+		probeJSON, err := ffmpeg.Probe(p)
+		if err == nil {
+			json.Unmarshal([]byte(probeJSON), &probeData)
+		}
+	}
 	}}
-	<div class="flex flex-col gap-4 max-w-md">
+	<div class="flex flex-col gap-2 max-w-md">
 		<h1>{ info.Name() }</h1>
 		Size: { humanize.Bytes(uint64(info.Size())) }
-		<br/>
 		Modified: { info.ModTime().Format(time.DateTime) }
-		<br/>
+		if len(probeData.Streams) > 0 {
+			<div class="mt-4 border-t pt-4">
+				<h2 class="font-semibold">Media Information</h2>
+				<div class="mt-2">
+					<div>Format: { probeData.Format.FormatLongName }</div>
+					if probeData.Format.Duration != "" {
+						{{ duration, _ := strconv.ParseFloat(probeData.Format.Duration, 64) }}
+						<div>Duration: { formatDuration(duration) }</div>
+					}
+					if probeData.Format.BitRate != "" {
+						{{ bitrate, _ := strconv.Atoi(probeData.Format.BitRate) }}
+						<div>Bitrate: { humanize.Bytes(uint64(bitrate/8)) + "/s" }</div>
+					}
+				</div>
+				<!-- Stream Information -->
+				<div class="mt-3">
+					<h3 class="font-medium">Streams</h3>
+					for _, stream := range probeData.Streams {
+						<div class="mt-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+							<div>Type: { stream.CodecType }</div>
+							<div>Codec: { stream.CodecLongName }</div>
+							if stream.CodecType == "video" {
+								<div>Resolution: { strconv.Itoa(stream.Width) + "x" + strconv.Itoa(stream.Height) }</div>
+								if stream.RFrameRate != "" && stream.RFrameRate != "0/0" {
+									{{
+									fps := "Unknown"
+									parts := strings.Split(stream.RFrameRate, "/")
+									if len(parts) == 2 {
+										num, err1 := strconv.Atoi(parts[0])
+										den, err2 := strconv.Atoi(parts[1])
+										if err1 == nil && err2 == nil && den > 0 {
+											fps = strconv.FormatFloat(float64(num)/float64(den), 'f', 2, 64)
+										}
+									}
+									}}
+									<div>Framerate: { fps } fps</div>
+								}
+							} else if stream.CodecType == "audio" {
+								<div>Sample Rate: { stream.SampleRate }</div>
+								<div>Channels: { strconv.Itoa(stream.Channels) } ({ stream.ChannelLayout })</div>
+							}
+							if stream.BitRate != "" {
+								{{ bitrate, _ := strconv.Atoi(stream.BitRate) }}
+								<div>Bitrate: { humanize.Bytes(uint64(bitrate/8)) + "/s" }</div>
+							}
+						</div>
+					}
+				</div>
+			</div>
+		}
 	</div>
 }

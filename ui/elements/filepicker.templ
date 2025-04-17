@@ -7,7 +7,23 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 )
+
+// isVideoFile checks if a file has a video extension
+func isVideoFile(name string) bool {
+	videoExtensions := []string{
+		".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".ts", ".mpg", ".mpeg",
+	}
+
+	ext := strings.ToLower(path.Ext(name))
+	for _, videoExt := range videoExtensions {
+		if ext == videoExt {
+			return true
+		}
+	}
+	return false
+}
 
 templ FilePicker(p string) {
 	<div id="filepicker">
@@ -39,6 +55,9 @@ templ FilePicker(p string) {
 					Required:    true,
 				})
 			</div>
+			<div class="text-sm text-muted-foreground px-1">
+				Showing only video files and directories
+			</div>
 			<div class="h-96 overflow-auto">
 				if info.IsDir() {
 					@filelist(p)
@@ -61,21 +80,24 @@ templ filelist(p string) {
 		for _, file := range files {
 			{{
 				urlpath := url.QueryEscape(path.Join(p, file.Name()))
+				showFile := file.IsDir() || isVideoFile(file.Name())
 			}}
-			if file.IsDir() {
-				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
-					<li class="flex items-center gap-2">
-						@icon.Folder()
-						<div class="flex hover:underline">{ file.Name() }</div>
-					</li>
-				</a>
-			} else {
-				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
-					<li class="flex items-center gap-2">
-						@icon.File()
-						<div class="flex hover:underline">{ file.Name() }</div>
-					</li>
-				</a>
+			if showFile {
+				if file.IsDir() {
+					<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+						<li class="flex items-center gap-2">
+							@icon.Folder()
+							<div class="flex hover:underline">{ file.Name() }</div>
+						</li>
+					</a>
+				} else {
+					<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+						<li class="flex items-center gap-2">
+							@icon.File()
+							<div class="flex hover:underline">{ file.Name() }</div>
+						</li>
+					</a>
+				}
 			}
 		}
 	</ul>
