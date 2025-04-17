@@ -13,6 +13,7 @@ import (
 	"github.com/royalcat/easy-transcoder/internal/config"
 	"github.com/royalcat/easy-transcoder/internal/processor"
 	"github.com/royalcat/easy-transcoder/ui/elements"
+	"github.com/royalcat/easy-transcoder/ui/modules"
 	"github.com/royalcat/easy-transcoder/ui/pages"
 )
 
@@ -52,10 +53,11 @@ func main() {
 	mux.Handle("GET /elements/filepicker", http.HandlerFunc(getfilebrowser))
 	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(getfileinfo))
 	mux.Handle("GET /elements/queue", http.HandlerFunc(s.getqueue))
+	mux.Handle("GET /elements/cpumonitor", http.HandlerFunc(getcpumonitor))
 
 	mux.Handle("POST /submit/task", http.HandlerFunc(s.submitTask))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
-	mux.Handle("POST /submit/cancel", http.HandlerFunc(s.submitTaskCancellation)) // Add the new endpoint
+	mux.Handle("POST /submit/cancel", http.HandlerFunc(s.submitTaskCancellation))
 
 	// mux.Handle("GET /elements/profileselector", http.HandlerFunc(s.getprofile))
 
@@ -86,6 +88,14 @@ func getfileinfo(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 
 	err := elements.FileInfo(path).Render(r.Context(), w)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func getcpumonitor(w http.ResponseWriter, r *http.Request) {
+	err := modules.CPUMonitor().Render(r.Context(), w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

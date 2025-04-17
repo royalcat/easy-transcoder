@@ -9,33 +9,20 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"os/exec"
-	"regexp"
-	"strings"
+	"fmt"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"time"
 )
 
-func getFFmpegVersion() string {
-	cmd := exec.Command("ffmpeg", "-version")
-	output, err := cmd.Output()
+func getCPUUsage() float64 {
+	vals, err := cpu.Percent(time.Second, false)
 	if err != nil {
-		return "FFmpeg: unavailable"
+		return 0.0
 	}
-
-	// Extract version from the first line
-	firstLine := strings.Split(string(output), "\n")[0]
-
-	// Use regex to extract the version number
-	re := regexp.MustCompile(`ffmpeg version\s+([\w\d\.-]+)`)
-	matches := re.FindStringSubmatch(firstLine)
-
-	if len(matches) >= 2 {
-		return "FFmpeg: v" + matches[1]
-	}
-
-	return "FFmpeg installed"
+	return vals[0]
 }
 
-func Navbar() templ.Component {
+func CPUMonitor() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -56,36 +43,20 @@ func Navbar() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"border-b py-3\"><div class=\"container mx-auto px-4 flex justify-between items-center\"><div class=\"flex items-center space-x-4\"><div class=\"text-sm text-gray-600 dark:text-gray-400 font-mono\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"cpu-monitor\" class=\"text-sm text-gray-600 dark:text-gray-400 font-mono\" hx-get=\"/elements/cpumonitor\" hx-trigger=\"every 3s\" hx-swap=\"outerHTML\">CPU: ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(getFFmpegVersion())
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f%%", getCPUUsage()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/modules/navbar.templ`, Line: 35, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/modules/cpumonitor.templ`, Line: 25, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = CPUMonitor().Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ThemeSwitcher().Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></div></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

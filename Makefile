@@ -4,13 +4,13 @@ templ:
 tailwind:
 	tailwindcss -i ./assets/css/input.css -o ./assets/css/output.css
 
+generate: templ tailwind
+	
 build-dir:
 	mkdir -p build
 
-bin: build-dir templ tailwind
+bin: build-dir generate
 	go build -o build/easy-transcoder ./cmd/easy-transcoder
-
-build: bin templ tailwind
 
 dev-server:
 	air \

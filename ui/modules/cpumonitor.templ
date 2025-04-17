@@ -1,0 +1,27 @@
+package modules
+
+import (
+	"fmt"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"time"
+)
+
+func getCPUUsage() float64 {
+	vals, err := cpu.Percent(time.Second, false)
+	if err != nil {
+		return 0.0
+	}
+	return vals[0]
+}
+
+templ CPUMonitor() {
+	<div
+		id="cpu-monitor"
+		class="text-sm text-gray-600 dark:text-gray-400 font-mono"
+		hx-get="/elements/cpumonitor"
+		hx-trigger="every 3s"
+		hx-swap="outerHTML"
+	>
+		CPU: { fmt.Sprintf("%.1f%%", getCPUUsage()) }
+	</div>
+}
