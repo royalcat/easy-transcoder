@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -54,6 +55,8 @@ func main() {
 
 	mux.Handle("POST /submit/task", http.HandlerFunc(s.submitTask))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
+	mux.Handle("POST /submit/cancel", http.HandlerFunc(s.submitTaskCancellation)) // Add the new endpoint
+
 	// mux.Handle("GET /elements/profileselector", http.HandlerFunc(s.getprofile))
 
 	// handler := middleware.WithCSP(middleware.CSPConfig{
@@ -93,15 +96,18 @@ func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 	queue := []elements.TaskState{}
 
 	for _, task := range s.Queue.GetQueue() {
+		// Create a TaskState with all available information from the improved Task struct
 		queue = append(queue, elements.TaskState{
-			ID:       strconv.Itoa(int(task.ID)),
-			Preset:   task.Preset,
-			FileName: path.Base(task.Input),
-			Status:   task.Status,
-			Progress: task.Progress,
-
+			ID:        strconv.Itoa(int(task.ID)),
+			Preset:    task.Preset,
+			FileName:  path.Base(task.Input),
+			Status:    task.Status,
+			Progress:  task.Progress,
 			InputFile: task.Input,
 			TempFile:  task.TempFile,
+			// Add more task information that might be useful in the UI
+			CreatedAt: task.CreateAt,
+			Duration:  task.Duration().Round(time.Second).String(),
 		})
 	}
 
@@ -127,17 +133,19 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 
 	taskState := elements.TaskState{}
 
+	// Retrieve the task and populate TaskState with rich information
 	for _, task := range s.Queue.GetQueue() {
 		if task.ID == uint64(taskId) {
 			taskState = elements.TaskState{
-				ID:       strconv.Itoa(int(task.ID)),
-				Preset:   task.Preset,
-				FileName: path.Base(task.Input),
-				Status:   task.Status,
-				Progress: task.Progress,
-
+				ID:        strconv.Itoa(int(task.ID)),
+				Preset:    task.Preset,
+				FileName:  path.Base(task.Input),
+				Status:    task.Status,
+				Progress:  task.Progress,
 				InputFile: task.Input,
 				TempFile:  task.TempFile,
+				CreatedAt: task.CreateAt,
+				Duration:  task.Duration().Round(time.Second).String(),
 			}
 			break
 		}
@@ -193,23 +201,29 @@ func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// func (s *server) getprofile(w http.ResponseWriter, r *http.Request) {
-// 	profileName := r.URL.Query().Get("profile")
+func (s *server) submitTaskCancellation(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-// 	profile := profile.Profile{}
-// 	for _, p := range s.Config.Profiles {
-// 		if p.Name == profileName {
-// 			profile = p
-// 			break
-// 		}
-// 	}
+	taskIdS := r.FormValue("taskid")
+	taskId, err := strconv.Atoi(taskIdS)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-// 	err := elements.ProfileSelector(profile).Render(r.Context(), w)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// }
+	err = s.Queue.CancelTask(uint64(taskId))
+	if err != nil {
+		http.Error(w, "Failed to cancel task: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Refresh the queue after cancellation
+	s.getqueue(w, r)
+}
 
 func assetsRoutes(mux *http.ServeMux) {
 

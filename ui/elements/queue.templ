@@ -1,6 +1,8 @@
 package elements
 
 import (
+	"time"
+
 	"github.com/axzilla/templui/component/button"
 	"github.com/axzilla/templui/component/label"
 	"github.com/axzilla/templui/component/progress"
@@ -9,21 +11,28 @@ import (
 	"github.com/royalcat/easy-transcoder/internal/processor"
 )
 
+// TaskState represents the UI state of a task
 type TaskState struct {
-	ID       string
-	Preset   string
-	FileName string
+	// Core identification
+	ID string
 
+	// Input/Output configuration
+	Preset    string
+	FileName  string
+	InputFile string
+	TempFile  string
+
+	// Status information
 	Status   processor.TaskStatus
 	Progress float64
 
-	// for resolution
-	InputFile string
-	TempFile  string
+	// Additional metadata
+	CreatedAt time.Time
+	Duration  string
 }
 
 templ Queue(tasks []TaskState) {
-	<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+	<div id="queue-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
 		for _, task := range tasks {
 			@taskCard(task)
 		}
@@ -31,7 +40,7 @@ templ Queue(tasks []TaskState) {
 }
 
 templ taskCard(task TaskState) {
-	<div class="min-w-sm max-w-2xl h-80 rounded-lg border text-card-foreground bg-card p-12 shadow-xs">
+	<div class="min-w-sm max-w-2xl h-90 rounded-lg border text-card-foreground bg-card p-12 shadow-xs">
 		<div class="flex flex-col gap-2 h-full w-full">
 			<div class="flex flex-none">
 				@label.Label(label.Props{
@@ -42,8 +51,14 @@ templ taskCard(task TaskState) {
 			</div>
 			<div class="flex grow">
 				<div class="flex flex-col w-full">
-					<p>ID: { task.ID }</p>
-					<p>Preset: { task.Preset }</p>
+					<p class="text-sm text-muted-foreground">ID: { task.ID }</p>
+					<p class="text-sm text-muted-foreground">Preset: { task.Preset }</p>
+					if !task.CreatedAt.IsZero() {
+						<p class="text-sm text-muted-foreground">Created: { task.CreatedAt.Format("Jan 02 15:04:05") }</p>
+					}
+					if task.Duration != "" && task.Duration != "0s" {
+						<p class="text-sm text-muted-foreground">Duration: { task.Duration }</p>
+					}
 				</div>
 			</div>
 			<div class="flex-none w-full">
@@ -52,6 +67,12 @@ templ taskCard(task TaskState) {
 						<div class="flex flex-row-reverse">
 							@button.Button(button.Props{
 								Variant: button.VariantDestructive,
+								HxPost:  "/submit/cancel",
+								Attributes: templ.Attributes{
+									"hx-vals":   `{"taskid": "` + task.ID + `"}`,
+									"hx-target": "#queue-grid",
+									"hx-swap":   "outerHTML",
+								},
 							}) {
 								Cancel
 							}
@@ -66,31 +87,47 @@ templ taskCard(task TaskState) {
 							}
 						</div>
 					case processor.TaskStatusProcessing:
-						<div class="flex flex-row gap-8">
+						<div class="flex flex-col gap-2">
 							@progress.Progress(progress.Props{
 								Value:     int(task.Progress * 100),
 								Variant:   progress.VariantSuccess,
 								ShowValue: true,
 								Label:     "Processing",
 							})
-							@tooltip.Tooltip() {
-								@tooltip.Trigger() {
-									@button.Button(button.Props{
-										Variant: button.VariantDestructive,
-										Size:    button.SizeIcon,
-									}) {
-										@icon.X()
+							<div class="flex justify-end">
+								@tooltip.Tooltip() {
+									@tooltip.Trigger() {
+										@button.Button(button.Props{
+											Variant: button.VariantDestructive,
+											Size:    button.SizeIcon,
+											HxPost:  "/submit/cancel",
+											Attributes: templ.Attributes{
+												"hx-vals":   `{"taskid": "` + task.ID + `"}`,
+												"hx-target": "#queue-grid",
+												"hx-swap":   "outerHTML",
+											},
+										}) {
+											@icon.X()
+										}
+									}
+									@tooltip.Content() {
+										Cancel
 									}
 								}
-								@tooltip.Content() {
-									Cancel
-								}
+							</div>
+						</div>
+					case processor.TaskStatusCancelled:
+						<div class="flex flex-row-reverse">
+							@label.Label(label.Props{
+								Class: "text-lg font-semibold text-destructive",
+							}) {
+								Cancelled
 							}
 						</div>
 					case processor.TaskStatusCompleted:
 						<div class="flex flex-row-reverse">
 							@label.Label(label.Props{
-								Class: "text-lg font-semibold",
+								Class: "text-lg font-semibold text-success",
 							}) {
 								Completed
 							}
@@ -98,7 +135,7 @@ templ taskCard(task TaskState) {
 					case processor.TaskStatusFailed:
 						<div class="flex flex-row-reverse">
 							@label.Label(label.Props{
-								Class: "text-lg font-semibold",
+								Class: "text-lg font-semibold text-destructive",
 							}) {
 								Failed
 							}
@@ -108,7 +145,7 @@ templ taskCard(task TaskState) {
 							@label.Label(label.Props{
 								Class: "text-lg font-semibold",
 							}) {
-								Unknow task status: { string(task.Status) }
+								Unknown status: { string(task.Status) }
 							}
 						</div>
 				}

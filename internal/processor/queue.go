@@ -5,12 +5,14 @@ import (
 	"path"
 	"slices"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/royalcat/easy-transcoder/internal/config"
 	"github.com/royalcat/easy-transcoder/internal/profile"
 )
 
+// Processor manages a queue of transcoding tasks.
 type Processor struct {
 	config config.Config
 
@@ -19,6 +21,7 @@ type Processor struct {
 	tasks  []Task
 }
 
+// NewQueue creates a new task processor.
 func NewQueue(config config.Config) *Processor {
 	return &Processor{
 		config: config,
@@ -26,6 +29,7 @@ func NewQueue(config config.Config) *Processor {
 	}
 }
 
+// StartWorker begins a background worker that processes pending tasks.
 func (q *Processor) StartWorker() {
 	go func() {
 		for range time.Tick(time.Second) {
@@ -37,9 +41,9 @@ func (q *Processor) StartWorker() {
 
 			q.mu.Lock()
 			for i := range q.tasks {
-				if q.tasks[i].Status == TaskStatusPending {
+				if q.tasks[i].IsPending() {
 					task = q.tasks[i]
-					q.tasks[i].Status = TaskStatusProcessing
+					q.tasks[i].MarkProcessing()
 					break
 				}
 			}
@@ -54,24 +58,17 @@ func (q *Processor) StartWorker() {
 	}()
 }
 
+// AddTask creates and enqueues a new transcoding task.
 func (q *Processor) AddTask(path, preset string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.taskAI++
-
-	task := Task{
-		ID:     q.taskAI,
-		Input:  path,
-		Preset: preset,
-
-		Status:   TaskStatusPending,
-		Progress: 0,
-	}
-
+	task := NewTask(q.taskAI, path, preset)
 	q.tasks = append(q.tasks, task)
 }
 
+// GetQueue returns a copy of all tasks in the queue.
 func (q *Processor) GetQueue() []Task {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -79,13 +76,14 @@ func (q *Processor) GetQueue() []Task {
 	return slices.Clone(q.tasks)
 }
 
+// GetTask retrieves a task by ID.
 func (q *Processor) GetTask(id uint64) Task {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	var task Task
 	for _, t := range q.tasks {
-		if t.ID == uint64(id) {
+		if t.ID == id {
 			task = t
 			break
 		}
@@ -94,21 +92,38 @@ func (q *Processor) GetTask(id uint64) Task {
 	return task
 }
 
-func (q *Processor) CancelTask(id uint64) {
+// CancelTask attempts to cancel a task by ID.
+func (q *Processor) CancelTask(id uint64) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	for i := range q.tasks {
-		err := q.tasks[i].cmd.Process.Signal(os.Interrupt)
-		if err != nil {
-			q.tasks[i].Error = err
-			q.tasks[i].Status = TaskStatusFailed
-		}
+		if q.tasks[i].ID == id {
+			// Only cancel if in a cancellable state
+			if q.tasks[i].IsActive() {
+				if q.tasks[i].cmd != nil && q.tasks[i].cmd.Process != nil {
+					err := q.tasks[i].cmd.Process.Signal(syscall.SIGTERM)
+					if err != nil {
+						q.tasks[i].MarkFailed(err)
+						return err
+					}
+				}
+			} else if q.tasks[i].IsPending() {
+				// Just mark as cancelled if pending
+			} else {
+				// Task is already completed or in a state that can't be cancelled
+				return nil
+			}
 
-		q.tasks[i].Status = TaskStatusCancelled
+			q.tasks[i].MarkCancelled()
+			return nil
+		}
 	}
+
+	return nil // Task not found
 }
 
+// tempFile creates a temporary file path for transcoding output.
 func (q *Processor) tempFile(filename string) (string, error) {
 	tempDir := q.config.TempDir
 	if tempDir == "" {
@@ -127,6 +142,7 @@ func (q *Processor) tempFile(filename string) (string, error) {
 	return tempFilePath, nil
 }
 
+// getProfile retrieves a transcoding profile by name.
 func (q *Processor) getProfile(name string) profile.Profile {
 	for _, p := range q.config.Profiles {
 		if p.Name == name {

@@ -6,31 +6,35 @@ import (
 	"time"
 )
 
+// ResolveTask completes a task that's waiting for resolution by either
+// keeping the original file or replacing it with the transcoded version.
 func (q *Processor) ResolveTask(task Task, replace bool) {
+	// Add a delay to ensure file operations are complete
 	time.Sleep(5 * time.Second)
 
 	if !replace {
-		task.Status = TaskStatusCompleted
+		// If not replacing, just mark as completed and clean up temp file
+		task.MarkCompleted()
 		q.updateTask(task)
 		os.Remove(task.TempFile)
 		return
 	}
 
+	// Replace the original file with the transcoded version
 	err := replaceFile(task.TempFile, task.Input)
 	if err != nil {
-		task.Status = TaskStatusFailed
-		task.Error = err
+		task.MarkFailed(err)
 		q.updateTask(task)
 		return
 	}
 
+	// Clean up and mark task as completed
 	os.Remove(task.TempFile)
-
-	task.Status = TaskStatusCompleted
+	task.MarkCompleted()
 	q.updateTask(task)
-
 }
 
+// replaceFile replaces the destination file with the contents of the source file.
 func replaceFile(src, dst string) error {
 	// Open the source file for reading
 	srcFile, err := os.Open(src)
@@ -52,7 +56,7 @@ func replaceFile(src, dst string) error {
 		return err
 	}
 
+	// Clean up the source file
 	os.Remove(src)
-
 	return nil
 }

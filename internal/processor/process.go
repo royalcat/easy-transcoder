@@ -27,57 +27,76 @@ func (q *Processor) updateTask(task Task) {
 }
 
 func (q *Processor) processTask(task Task) {
-	task.Status = TaskStatusProcessing
+	// Mark task as processing
+	task.MarkProcessing()
 	q.updateTask(task)
 
+	// Probe the input file
 	a, err := ffmpeg.Probe(task.Input)
 	if err != nil {
-		task.Status = TaskStatusFailed
-		task.Error = err
+		task.MarkFailed(err)
 		q.updateTask(task)
 		return
 	}
+
 	totalDuration, err := probeDuration(a)
 	if err != nil {
-		task.Status = TaskStatusFailed
-		task.Error = err
+		task.MarkFailed(err)
 		q.updateTask(task)
 		return
 	}
 
 	preset := q.getProfile(task.Preset)
 
+	// Create temporary output file
 	task.TempFile, err = q.tempFile(task.Input)
 	if err != nil {
-		task.Status = TaskStatusFailed
-		task.Error = err
+		task.MarkFailed(err)
 		q.updateTask(task)
 		return
 	}
 
+	// Setup progress tracking
 	progressCallback := func(prg float64) {
 		fmt.Printf("Progress: %.2f%%\n", prg*100)
-		task.Progress = prg
+		task.SetProgress(prg)
 		q.updateTask(task)
 	}
 
 	progressSock := ffmpegProgressSock(totalDuration, progressCallback)
 	defer os.Remove(progressSock)
 
-	task.cmd = preset.Compile(task.Input, task.TempFile, progressSock)
+	// Prepare and run the command
+	cmd := preset.Compile(task.Input, task.TempFile, progressSock)
+	task.SetCommand(cmd)
+	err = cmd.Run()
 
-	err = task.cmd.Run()
+	// Check if the task was already marked as cancelled before determining status
+	q.mu.Lock()
+	var currentStatus TaskStatus
+	for _, t := range q.tasks {
+		if t.ID == task.ID {
+			currentStatus = t.Status
+			break
+		}
+	}
+	q.mu.Unlock()
 
-	if err != nil {
-		task.Status = TaskStatusFailed
-		task.Error = err
+	// Only mark as failed if not already cancelled
+	if err != nil && currentStatus != TaskStatusCancelled {
+		task.MarkFailed(err)
 		q.updateTask(task)
 		return
 	}
 
-	task.Status = TaskStatusWaitingForResolution
+	// If already cancelled, we don't need to update anything
+	if currentStatus == TaskStatusCancelled {
+		return
+	}
+
+	// Mark for resolution
+	task.MarkWaitingForResolution()
 	q.updateTask(task)
-	return
 }
 
 func ffmpegProgressSock(totalDuration float64, progressCallback func(float64)) string {
