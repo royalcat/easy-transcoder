@@ -21,8 +21,11 @@ templ Root(profiles []profile.Profile) {
 templ createTaskModalButton(profiles []profile.Profile) {
 	@modal.Trigger(modal.TriggerProps{
 		ModalID: "create-task",
+		Class:   "w-24",
 	}) {
-		@button.Button() {
+		@button.Button(button.Props{
+			FullWidth: true,
+		}) {
 			Create Task
 		}
 	}

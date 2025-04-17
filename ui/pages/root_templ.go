@@ -123,7 +123,9 @@ func createTaskModalButton(profiles []profile.Profile) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = button.Button().Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = button.Button(button.Props{
+				FullWidth: true,
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -131,6 +133,7 @@ func createTaskModalButton(profiles []profile.Profile) templ.Component {
 		})
 		templ_7745c5c3_Err = modal.Trigger(modal.TriggerProps{
 			ModalID: "create-task",
+			Class:   "w-24",
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
