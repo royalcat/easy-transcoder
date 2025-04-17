@@ -97,7 +97,7 @@ docker run -p 8080:8080 -v /path/to/media:/media -v /path/to/config:/app/config 
 - [ ] Better resolution UI
 - [ ] VMAF
 - [ ] Browser Notifications
-- [ ] ffmpeg version check
+- [x] ffmpeg version check
 - [ ] download custom ffmpeg binary
 - [ ] cpu usage
 - [ ] SSE for queue updates
