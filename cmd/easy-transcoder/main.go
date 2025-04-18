@@ -199,8 +199,12 @@ func (s *server) getcpumonitor(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 	queue := []elements.TaskState{}
-
 	for _, task := range s.Queue.GetQueue() {
+		errorMessage := ""
+		if task.Error != nil {
+			errorMessage = task.Error.Error()
+		}
+
 		queue = append(queue, elements.TaskState{
 			ID:        strconv.Itoa(int(task.ID)),
 			Preset:    task.Preset,
@@ -210,11 +214,10 @@ func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 			InputFile: task.Input,
 			TempFile:  task.TempFile,
 			CreatedAt: task.CreateAt,
+			Error:     errorMessage,
 		})
 	}
-
 	s.logger.Debug("queue request", "queue_length", len(queue))
-
 	err := elements.Queue(queue).Render(r.Context(), w)
 	if err != nil {
 		s.logger.Error("queue render error", "error", err)
@@ -381,6 +384,11 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the task and populate TaskState with rich information
 	for _, task := range s.Queue.GetQueue() {
 		if task.ID == uint64(taskId) {
+			errorMessage := ""
+			if task.Error != nil {
+				errorMessage = task.Error.Error()
+			}
+
 			taskState = elements.TaskState{
 				ID:        strconv.Itoa(int(task.ID)),
 				Preset:    task.Preset,
@@ -390,6 +398,7 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 				InputFile: task.Input,
 				TempFile:  task.TempFile,
 				CreatedAt: task.CreateAt,
+				Error:     errorMessage,
 			}
 			break
 		}

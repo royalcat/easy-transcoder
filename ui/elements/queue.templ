@@ -25,6 +25,7 @@ type TaskState struct {
 	// Status information
 	Status   processor.TaskStatus
 	Progress float64
+	Error    string // Error message if task failed
 
 	// Additional metadata
 	CreatedAt time.Time
@@ -54,6 +55,11 @@ templ taskCard(task TaskState) {
 					<p class="text-sm text-muted-foreground">Preset: { task.Preset }</p>
 					if !task.CreatedAt.IsZero() {
 						<p class="text-sm text-muted-foreground">Created: { task.CreatedAt.Format("Jan 02 15:04:05") }</p>
+					}
+					if task.Status == processor.TaskStatusFailed && task.Error != "" {
+						<div class="mt-2 p-2 bg-destructive/10 border border-destructive rounded-md">
+							<p class="text-sm text-destructive font-medium">Error: { task.Error }</p>
+						</div>
 					}
 				</div>
 			</div>
