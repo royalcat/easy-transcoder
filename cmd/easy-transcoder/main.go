@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"path"
 	"strconv"
 	"time"
@@ -20,24 +21,37 @@ import (
 )
 
 func main() {
-	config, err := config.ParseConfig("config.yaml")
+	// Parse configuration first
+	cfg, err := config.ParseConfig("config.yaml")
 	if err != nil {
-		fmt.Println("Error parsing config:", err)
-		return
+		// Use basic logging since we don't have config yet
+		slog.Error("failed to parse config", "error", err)
+		os.Exit(1)
 	}
 
-	q := processor.NewQueue(config)
+	// Initialize logger based on configuration
+	logger := setupLogger(cfg)
+	slog.SetDefault(logger)
+
+	slog.Info("starting easy-transcoder")
+
+	q := processor.NewProcessor(cfg, logger)
 	q.StartWorker()
 
 	s := &server{
-		Config: config,
+		Config: cfg,
 		Queue:  q,
+		logger: logger,
 	}
 
 	templHandler := func(c templ.Component) http.Handler {
 		return templ.Handler(c,
 			templ.WithErrorHandler(func(r *http.Request, err error) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					s.logger.Error("template error",
+						"path", r.URL.Path,
+						"error", err,
+					)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 				})
 			}),
@@ -48,14 +62,14 @@ func main() {
 
 	assetsRoutes(mux)
 
-	mux.Handle("GET /", templHandler(pages.Root(config.Profiles)))
+	mux.Handle("GET /", templHandler(pages.Root(cfg.Profiles)))
 	mux.Handle("GET /resolver", http.HandlerFunc(s.pageResolver))
-	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(config.Profiles)))
+	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(cfg.Profiles)))
 
-	mux.Handle("GET /elements/filepicker", http.HandlerFunc(getfilebrowser))
-	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(getfileinfo))
+	mux.Handle("GET /elements/filepicker", http.HandlerFunc(s.getfilebrowser))
+	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(s.getfileinfo))
 	mux.Handle("GET /elements/queue", http.HandlerFunc(s.getqueue))
-	mux.Handle("GET /elements/cpumonitor", http.HandlerFunc(getcpumonitor))
+	mux.Handle("GET /elements/cpumonitor", http.HandlerFunc(s.getcpumonitor))
 
 	// Replaced the single VMAF endpoint with three separate metric endpoints
 	mux.Handle("GET /metrics/vmaf", http.HandlerFunc(s.getVMAF))
@@ -72,38 +86,112 @@ func main() {
 	// 	ScriptSrc: []string{"cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com"},
 	// })(mux)
 
-	fmt.Println("Listening on :8080")
-	http.ListenAndServe(":8080", mux)
+	address := ":8080"
+	slog.Info("server starting", "address", address)
+
+	srv := &http.Server{
+		Addr:         address,
+		Handler:      loggingMiddleware(mux, logger),
+		WriteTimeout: 0,
+	}
+
+	err = srv.ListenAndServe()
+	if err != nil {
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+// setupLogger creates a logger based on the provided configuration
+func setupLogger(cfg config.Config) *slog.Logger {
+	// Configure the log level
+	level := cfg.GetLogLevel()
+
+	// Configure the handler based on format
+	var handler slog.Handler
+	if cfg.Logging.Format == "json" {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})
+	}
+
+	return slog.New(handler)
+}
+
+// Logging middleware to log all HTTP requests
+func loggingMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Create a response wrapper to capture status code
+		rw := &responseWriter{w, http.StatusOK}
+
+		// Process request
+		next.ServeHTTP(rw, r)
+
+		// Log request details after processing
+		logger.Info("http request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.statusCode,
+			"duration", time.Since(start),
+			"remote_addr", r.RemoteAddr,
+		)
+	})
+}
+
+// responseWriter is a wrapper for http.ResponseWriter that captures the status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+// WriteHeader captures the status code before writing it
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
 
 type server struct {
 	Config config.Config
 	Queue  *processor.Processor
+	logger *slog.Logger
 }
 
-func getfilebrowser(w http.ResponseWriter, r *http.Request) {
+func (s *server) getfilebrowser(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
+
+	s.logger.Info("file browser request", "path", path)
 
 	err := elements.FilePicker(path).Render(r.Context(), w)
 	if err != nil {
+		s.logger.Error("file browser render error", "path", path, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func getfileinfo(w http.ResponseWriter, r *http.Request) {
+func (s *server) getfileinfo(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
+
+	s.logger.Info("file info request", "path", path)
 
 	err := elements.FileInfo(path).Render(r.Context(), w)
 	if err != nil {
+		s.logger.Error("file info render error", "path", path, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func getcpumonitor(w http.ResponseWriter, r *http.Request) {
+func (s *server) getcpumonitor(w http.ResponseWriter, r *http.Request) {
 	err := modules.CPUMonitor().Render(r.Context(), w)
 	if err != nil {
+		s.logger.Error("cpu monitor render error", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -113,7 +201,6 @@ func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 	queue := []elements.TaskState{}
 
 	for _, task := range s.Queue.GetQueue() {
-		// Create a TaskState with all available information from the improved Task struct
 		queue = append(queue, elements.TaskState{
 			ID:        strconv.Itoa(int(task.ID)),
 			Preset:    task.Preset,
@@ -122,14 +209,15 @@ func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 			Progress:  task.Progress,
 			InputFile: task.Input,
 			TempFile:  task.TempFile,
-			// Add more task information that might be useful in the UI
 			CreatedAt: task.CreateAt,
-			Duration:  task.Duration().Round(time.Second).String(),
 		})
 	}
 
+	s.logger.Debug("queue request", "queue_length", len(queue))
+
 	err := elements.Queue(queue).Render(r.Context(), w)
 	if err != nil {
+		s.logger.Error("queue render error", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -140,7 +228,16 @@ func (s *server) getVMAF(w http.ResponseWriter, r *http.Request) {
 	reference := r.URL.Query().Get("reference")
 	distorted := r.URL.Query().Get("distorted")
 
+	s.logger.Info("vmaf calculation request",
+		"reference", reference,
+		"distorted", distorted,
+	)
+
 	if reference == "" || distorted == "" {
+		s.logger.Warn("missing vmaf parameters",
+			"reference", reference,
+			"distorted", distorted,
+		)
 		http.Error(w, "Missing 'reference' or 'distorted' parameter", http.StatusBadRequest)
 		return
 	}
@@ -148,14 +245,25 @@ func (s *server) getVMAF(w http.ResponseWriter, r *http.Request) {
 	// Calculate VMAF score
 	vmafScore, err := transcoding.CalculateVMAF(r.Context(), reference, distorted)
 	if err != nil {
+		s.logger.Error("vmaf calculation failed",
+			"reference", reference,
+			"distorted", distorted,
+			"error", err,
+		)
 		http.Error(w, fmt.Sprintf("VMAF calculation error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	s.logger.Info("vmaf calculation complete",
+		"reference", reference,
+		"distorted", distorted,
+		"score", vmafScore,
+	)
+
 	// Render VMAF score with the specific template
 	err = pages.VMafScore(vmafScore).Render(r.Context(), w)
 	if err != nil {
-		log.Println("Error rendering VMAF score:", err)
+		s.logger.Error("vmaf render error", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -166,7 +274,16 @@ func (s *server) getPSNR(w http.ResponseWriter, r *http.Request) {
 	reference := r.URL.Query().Get("reference")
 	distorted := r.URL.Query().Get("distorted")
 
+	s.logger.Info("psnr calculation request",
+		"reference", reference,
+		"distorted", distorted,
+	)
+
 	if reference == "" || distorted == "" {
+		s.logger.Warn("missing psnr parameters",
+			"reference", reference,
+			"distorted", distorted,
+		)
 		http.Error(w, "Missing 'reference' or 'distorted' parameter", http.StatusBadRequest)
 		return
 	}
@@ -174,14 +291,25 @@ func (s *server) getPSNR(w http.ResponseWriter, r *http.Request) {
 	// Calculate PSNR score
 	psnrScore, err := transcoding.CalculatePSNR(r.Context(), reference, distorted)
 	if err != nil {
+		s.logger.Error("psnr calculation failed",
+			"reference", reference,
+			"distorted", distorted,
+			"error", err,
+		)
 		http.Error(w, fmt.Sprintf("PSNR calculation error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	s.logger.Info("psnr calculation complete",
+		"reference", reference,
+		"distorted", distorted,
+		"score", psnrScore,
+	)
+
 	// Render PSNR score with the specific template
 	err = pages.PsnrScore(psnrScore).Render(r.Context(), w)
 	if err != nil {
-		log.Println("Error rendering PSNR score:", err)
+		s.logger.Error("psnr render error", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -192,7 +320,16 @@ func (s *server) getSSIM(w http.ResponseWriter, r *http.Request) {
 	reference := r.URL.Query().Get("reference")
 	distorted := r.URL.Query().Get("distorted")
 
+	s.logger.Info("ssim calculation request",
+		"reference", reference,
+		"distorted", distorted,
+	)
+
 	if reference == "" || distorted == "" {
+		s.logger.Warn("missing ssim parameters",
+			"reference", reference,
+			"distorted", distorted,
+		)
 		http.Error(w, "Missing 'reference' or 'distorted' parameter", http.StatusBadRequest)
 		return
 	}
@@ -200,14 +337,25 @@ func (s *server) getSSIM(w http.ResponseWriter, r *http.Request) {
 	// Calculate SSIM score
 	ssimScore, err := transcoding.CalculateSSIM(r.Context(), reference, distorted)
 	if err != nil {
+		s.logger.Error("ssim calculation failed",
+			"reference", reference,
+			"distorted", distorted,
+			"error", err,
+		)
 		http.Error(w, fmt.Sprintf("SSIM calculation error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	s.logger.Info("ssim calculation complete",
+		"reference", reference,
+		"distorted", distorted,
+		"score", ssimScore,
+	)
+
 	// Render SSIM score with the specific template
 	err = pages.SsimScore(ssimScore).Render(r.Context(), w)
 	if err != nil {
-		log.Println("Error rendering SSIM score:", err)
+		s.logger.Error("ssim render error", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -217,11 +365,13 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 	taskIdS := r.URL.Query().Get("taskid")
 	taskId, err := strconv.Atoi(taskIdS)
 	if err != nil {
+		s.logger.Error("invalid task id", "task_id", taskIdS, "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if taskId == 0 {
+		s.logger.Warn("task id not found", "task_id", taskId)
 		http.Error(w, "Task ID not found", http.StatusNotFound)
 		return
 	}
@@ -240,14 +390,16 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 				InputFile: task.Input,
 				TempFile:  task.TempFile,
 				CreatedAt: task.CreateAt,
-				Duration:  task.Duration().Round(time.Second).String(),
 			}
 			break
 		}
 	}
 
+	s.logger.Info("task resolver", "task_id", taskId, "status", taskState.Status)
+
 	err = pages.Resolver(taskState).Render(r.Context(), w)
 	if err != nil {
+		s.logger.Error("resolver render error", "task_id", taskId, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -256,6 +408,7 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 func (s *server) submitTask(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
+		s.logger.Error("parse form error", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -263,20 +416,25 @@ func (s *server) submitTask(w http.ResponseWriter, r *http.Request) {
 	filepath := r.FormValue("filepath")
 	profileName := r.FormValue("profile")
 
-	fmt.Printf("Submitting task for file: %s with profile: %s\n", filepath, profileName)
+	s.logger.Info("task submission", "filepath", filepath, "profile", profileName)
+
 	s.Queue.AddTask(filepath, profileName)
 }
 
 func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	err := r.ParseForm()
 	if err != nil {
+		s.logger.Error("parse form error", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	taskIdS := r.FormValue("taskid")
-	taskId, err := strconv.Atoi(taskIdS)
+	taskID, err := strconv.Atoi(taskIdS)
 	if err != nil {
+		s.logger.Error("invalid task id", "task_id", taskIdS, "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -284,13 +442,14 @@ func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {
 	replaceS := r.FormValue("replace")
 	replace, err := strconv.ParseBool(replaceS)
 	if err != nil {
+		s.logger.Error("invalid replace value", "replace", replaceS, "error", err)
 		http.Error(w, "Invalid value for 'replace' parameter: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	task := s.Queue.GetTask(uint64(taskId))
+	s.logger.Info("resolving task", "task_id", taskID, "replace", replace)
 
-	s.Queue.ResolveTask(task, replace)
+	s.Queue.ResolveTask(ctx, uint64(taskID), replace)
 
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
@@ -299,6 +458,7 @@ func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {
 func (s *server) submitTaskCancellation(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
+		s.logger.Error("parse form error", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -306,12 +466,16 @@ func (s *server) submitTaskCancellation(w http.ResponseWriter, r *http.Request) 
 	taskIdS := r.FormValue("taskid")
 	taskId, err := strconv.Atoi(taskIdS)
 	if err != nil {
+		s.logger.Error("invalid task id", "task_id", taskIdS, "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	s.logger.Info("cancelling task", "task_id", taskId)
+
 	err = s.Queue.CancelTask(uint64(taskId))
 	if err != nil {
+		s.logger.Error("task cancellation failed", "task_id", taskId, "error", err)
 		http.Error(w, "Failed to cancel task: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

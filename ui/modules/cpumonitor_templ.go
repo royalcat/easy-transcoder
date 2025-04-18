@@ -11,8 +11,11 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"github.com/shirou/gopsutil/v4/cpu"
+	"sync/atomic"
 	"time"
 )
+
+var lastCPUCall atomic.Pointer[time.Time]
 
 func getCPUUsage() float64 {
 	vals, err := cpu.Percent(time.Second, false)
@@ -50,7 +53,7 @@ func CPUMonitor() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f%%", getCPUUsage()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/modules/cpumonitor.templ`, Line: 25, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/modules/cpumonitor.templ`, Line: 28, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {

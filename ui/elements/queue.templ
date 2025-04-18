@@ -28,7 +28,6 @@ type TaskState struct {
 
 	// Additional metadata
 	CreatedAt time.Time
-	Duration  string
 }
 
 templ Queue(tasks []TaskState) {
@@ -55,9 +54,6 @@ templ taskCard(task TaskState) {
 					<p class="text-sm text-muted-foreground">Preset: { task.Preset }</p>
 					if !task.CreatedAt.IsZero() {
 						<p class="text-sm text-muted-foreground">Created: { task.CreatedAt.Format("Jan 02 15:04:05") }</p>
-					}
-					if task.Duration != "" && task.Duration != "0s" {
-						<p class="text-sm text-muted-foreground">Duration: { task.Duration }</p>
 					}
 				</div>
 			</div>

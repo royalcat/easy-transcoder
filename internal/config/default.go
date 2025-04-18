@@ -21,4 +21,8 @@ var DefaultConfig = Config{
 			},
 		},
 	},
+	Logging: LogConfig{
+		Level:  "info",
+		Format: "text",
+	},
 }

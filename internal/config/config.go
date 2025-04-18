@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -14,11 +15,39 @@ import (
 	"github.com/royalcat/easy-transcoder/internal/transcoding"
 )
 
+// LogConfig holds all logging configuration options
+type LogConfig struct {
+	// Level defines the minimum log level to output (debug, info, warn, error)
+	Level string `koanf:"level"`
+	// Format defines the log output format (json or text)
+	Format string `koanf:"format"`
+}
+
+// Config holds the application configuration
 type Config struct {
 	TempDir  string                `koanf:"tempdir"`
 	Profiles []transcoding.Profile `koanf:"profiles"`
+	Logging  LogConfig             `koanf:"logging"`
 }
 
+// GetLogLevel returns the slog.Level based on the configured string level
+func (c *Config) GetLogLevel() slog.Level {
+	switch strings.ToLower(c.Logging.Level) {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		// Default to info level
+		return slog.LevelInfo
+	}
+}
+
+// ParseConfig loads configuration from a file and environment variables
 func ParseConfig(p string) (Config, error) {
 	var k = koanf.NewWithConf(koanf.Conf{
 		Delim:       ".",

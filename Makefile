@@ -1,7 +1,7 @@
 templ:
 	go tool templ generate -v
 
-tailwind:
+tailwind: templ
 	tailwindcss -i ./assets/css/input.css -o ./assets/css/output.css
 
 generate: templ tailwind

@@ -1,159 +1,118 @@
 package processor
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
-	"math/rand"
-	"net"
 	"os"
 	"path"
-	"regexp"
-	"strconv"
 	"strings"
 
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
-func (q *Processor) updateTask(task Task) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
+// only this function can modify not atomic task status
+func (q *Processor) processTask(task *task) {
+	log := q.logger.With("task_id", task.ID, "input", task.Input, "preset", task.Preset)
 
-	for i, t := range q.tasks {
-		if t.ID == task.ID {
-			q.tasks[i] = task
-		}
+	if task.cancelled.Load() {
+		log.Info("transcoding was cancelled")
+		task.MarkCancelled()
+		return
 	}
-}
 
-func (q *Processor) processTask(task Task) {
-	// Mark task as processing
 	task.MarkProcessing()
-	q.updateTask(task)
 
 	// Probe the input file
+	log.Info("probing input file")
 	a, err := ffmpeg.Probe(task.Input)
 	if err != nil {
-		task.MarkFailed(err)
-		q.updateTask(task)
+		log.Error("probe failed", "error", err)
+		task.MarkFailed(fmt.Errorf("failed to probe input file: %s", err))
 		return
 	}
 
 	totalDuration, err := probeDuration(a)
 	if err != nil {
-		task.MarkFailed(err)
-		q.updateTask(task)
+		log.Error("failed to parse duration", "error", err)
+		task.MarkFailed(fmt.Errorf("failed to parse duration: %s", err))
 		return
 	}
+	log.Debug("media duration detected", "duration", totalDuration)
 
 	preset := q.getProfile(task.Preset)
+	if preset.Name == "" {
+		log.Error("invalid preset")
+		task.MarkFailed(fmt.Errorf("invalid preset: %s", task.Preset))
+		return
+	}
 
 	// Create temporary output file
 	task.TempFile, err = q.tempFile(task.Input)
 	if err != nil {
-		task.MarkFailed(err)
-		q.updateTask(task)
+		log.Error("failed to create temp file", "task_id", task.ID, "error", err)
+		task.MarkFailed(fmt.Errorf("failed to create temp file: %s", err))
 		return
 	}
+	log.Info("temp file created", "task_id", task.ID, "temp_file", task.TempFile)
 
 	// Setup progress tracking
 	progressCallback := func(prg float64) {
-		fmt.Printf("Progress: %.2f%%\n", prg*100)
+		log.Debug("transcoding progress", "progress", fmt.Sprintf("%.2f%%", prg*100))
 		task.SetProgress(prg)
-		q.updateTask(task)
 	}
 
-	progressSock := ffmpegProgressSock(totalDuration, progressCallback)
+	progressSock := q.ffmpegProgressSock(totalDuration, progressCallback, task.ID)
 	defer os.Remove(progressSock)
 
 	// Prepare and run the command
 	cmd := preset.Compile(task.Input, task.TempFile, progressSock)
 	task.SetCommand(cmd)
+
+	log.Info("starting transcoding", "command", strings.Join(cmd.Args, " "))
+
 	err = cmd.Run()
 
-	// Check if the task was already marked as cancelled before determining status
-	q.mu.Lock()
-	var currentStatus TaskStatus
-	for _, t := range q.tasks {
-		if t.ID == task.ID {
-			currentStatus = t.Status
-			break
-		}
-	}
-	q.mu.Unlock()
-
-	// Only mark as failed if not already cancelled
-	if err != nil && currentStatus != TaskStatusCancelled {
-		task.MarkFailed(err)
-		q.updateTask(task)
+	// Ignore error if the task was cancelled
+	if task.cancelled.Load() {
+		log.Info("transcoding was cancelled")
+		task.MarkCancelled()
 		return
 	}
 
-	// If already cancelled, we don't need to update anything
-	if currentStatus == TaskStatusCancelled {
+	if err != nil {
+		log.Error("transcoding failed", "error", err)
+		task.MarkFailed(fmt.Errorf("transcoding failed: %s", err))
 		return
 	}
 
-	// Mark for resolution
+	log.Info("transcoding completed, mark waiting for resolution")
 	task.MarkWaitingForResolution()
-	q.updateTask(task)
 }
 
-func ffmpegProgressSock(totalDuration float64, progressCallback func(float64)) string {
-	sockFileName := path.Join(os.TempDir(), fmt.Sprintf("%d_sock", rand.Int()))
-	l, err := net.Listen("unix", sockFileName)
+// tempFile creates a temporary file path for transcoding output.
+func (q *Processor) tempFile(filename string) (string, error) {
+	tempDir := q.config.TempDir
+	if tempDir == "" {
+		tempDir = path.Join(os.TempDir(), "easy-transcoder")
+	}
+	q.logger.Debug("creating temp directory", "dir", tempDir)
+
+	err := os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
-		panic(err)
+		q.logger.Error("failed to create temp directory",
+			"dir", tempDir,
+			"error", err)
+		return "", err
 	}
 
-	go func() {
-		re := regexp.MustCompile(`out_time_ms=(\d+)`)
-		fd, err := l.Accept()
-		if err != nil {
-			log.Fatal("accept error:", err)
-		}
-		buf := make([]byte, 16)
-		data := ""
-		for {
-			_, err := fd.Read(buf)
-			if err != nil {
-				return
-			}
-			data += string(buf)
-			a := re.FindAllStringSubmatch(data, -1)
-			prog := float64(0)
-			if len(a) > 0 && len(a[len(a)-1]) > 0 {
-				c, _ := strconv.Atoi(a[len(a)-1][len(a[len(a)-1])-1])
-				prog = float64(c) / totalDuration / 1000000
-			}
-			if strings.Contains(data, "progress=end") {
-				prog = 1
-			}
-
-			progressCallback(prog)
-		}
-	}()
-
-	return sockFileName
-}
-
-type probeFormat struct {
-	Duration string `json:"duration"`
-}
-
-type probeData struct {
-	Format probeFormat `json:"format"`
-}
-
-func probeDuration(a string) (float64, error) {
-	pd := probeData{}
-	err := json.Unmarshal([]byte(a), &pd)
+	tempDir, err = os.MkdirTemp(tempDir, "")
 	if err != nil {
-		return 0, err
+		q.logger.Error("failed to create temp subdirectory",
+			"parent_dir", tempDir,
+			"error", err)
+		return "", err
 	}
-	f, err := strconv.ParseFloat(pd.Format.Duration, 64)
-	if err != nil {
-		return 0, err
-	}
-	return f, nil
+
+	tempFilePath := path.Join(tempDir, path.Base(filename))
+	q.logger.Debug("created temp file path", "path", tempFilePath)
+	return tempFilePath, nil
 }

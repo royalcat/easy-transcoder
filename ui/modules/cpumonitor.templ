@@ -3,8 +3,11 @@ package modules
 import (
 	"fmt"
 	"github.com/shirou/gopsutil/v4/cpu"
+	"sync/atomic"
 	"time"
 )
+
+var lastCPUCall atomic.Pointer[time.Time]
 
 func getCPUUsage() float64 {
 	vals, err := cpu.Percent(time.Second, false)
