@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"path"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"github.com/royalcat/easy-transcoder/assets"
 	"github.com/royalcat/easy-transcoder/internal/config"
 	"github.com/royalcat/easy-transcoder/internal/processor"
+	"github.com/royalcat/easy-transcoder/internal/transcoding"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/modules"
 	"github.com/royalcat/easy-transcoder/ui/pages"
@@ -54,6 +56,11 @@ func main() {
 	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(getfileinfo))
 	mux.Handle("GET /elements/queue", http.HandlerFunc(s.getqueue))
 	mux.Handle("GET /elements/cpumonitor", http.HandlerFunc(getcpumonitor))
+
+	// Replaced the single VMAF endpoint with three separate metric endpoints
+	mux.Handle("GET /metrics/vmaf", http.HandlerFunc(s.getVMAF))
+	mux.Handle("GET /metrics/psnr", http.HandlerFunc(s.getPSNR))
+	mux.Handle("GET /metrics/ssim", http.HandlerFunc(s.getSSIM))
 
 	mux.Handle("POST /submit/task", http.HandlerFunc(s.submitTask))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
@@ -123,6 +130,84 @@ func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 
 	err := elements.Queue(queue).Render(r.Context(), w)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// Updated to use the specific VMAF template
+func (s *server) getVMAF(w http.ResponseWriter, r *http.Request) {
+	reference := r.URL.Query().Get("reference")
+	distorted := r.URL.Query().Get("distorted")
+
+	if reference == "" || distorted == "" {
+		http.Error(w, "Missing 'reference' or 'distorted' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Calculate VMAF score
+	vmafScore, err := transcoding.CalculateVMAF(r.Context(), reference, distorted)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("VMAF calculation error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Render VMAF score with the specific template
+	err = pages.VMafScore(vmafScore).Render(r.Context(), w)
+	if err != nil {
+		log.Println("Error rendering VMAF score:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// New handler for PSNR score
+func (s *server) getPSNR(w http.ResponseWriter, r *http.Request) {
+	reference := r.URL.Query().Get("reference")
+	distorted := r.URL.Query().Get("distorted")
+
+	if reference == "" || distorted == "" {
+		http.Error(w, "Missing 'reference' or 'distorted' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Calculate PSNR score
+	psnrScore, err := transcoding.CalculatePSNR(r.Context(), reference, distorted)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("PSNR calculation error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Render PSNR score with the specific template
+	err = pages.PsnrScore(psnrScore).Render(r.Context(), w)
+	if err != nil {
+		log.Println("Error rendering PSNR score:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// New handler for SSIM score
+func (s *server) getSSIM(w http.ResponseWriter, r *http.Request) {
+	reference := r.URL.Query().Get("reference")
+	distorted := r.URL.Query().Get("distorted")
+
+	if reference == "" || distorted == "" {
+		http.Error(w, "Missing 'reference' or 'distorted' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Calculate SSIM score
+	ssimScore, err := transcoding.CalculateSSIM(r.Context(), reference, distorted)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("SSIM calculation error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Render SSIM score with the specific template
+	err = pages.SsimScore(ssimScore).Render(r.Context(), w)
+	if err != nil {
+		log.Println("Error rendering SSIM score:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -236,13 +321,10 @@ func (s *server) submitTaskCancellation(w http.ResponseWriter, r *http.Request) 
 }
 
 func assetsRoutes(mux *http.ServeMux) {
-
 	fs := http.FileServer(http.FS(assets.Assets))
 
 	assetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Set("Cache-Control", "no-store")
-
 		fs.ServeHTTP(w, r)
 	})
 

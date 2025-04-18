@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/royalcat/easy-transcoder/internal/config"
-	"github.com/royalcat/easy-transcoder/internal/profile"
+	"github.com/royalcat/easy-transcoder/internal/transcoding"
 )
 
 // Processor manages a queue of transcoding tasks.
@@ -143,11 +143,11 @@ func (q *Processor) tempFile(filename string) (string, error) {
 }
 
 // getProfile retrieves a transcoding profile by name.
-func (q *Processor) getProfile(name string) profile.Profile {
+func (q *Processor) getProfile(name string) transcoding.Profile {
 	for _, p := range q.config.Profiles {
 		if p.Name == name {
 			return p
 		}
 	}
-	return profile.Profile{}
+	return transcoding.Profile{}
 }

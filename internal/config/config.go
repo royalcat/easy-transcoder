@@ -11,12 +11,12 @@ import (
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
 
-	"github.com/royalcat/easy-transcoder/internal/profile"
+	"github.com/royalcat/easy-transcoder/internal/transcoding"
 )
 
 type Config struct {
-	TempDir  string            `koanf:"tempdir"`
-	Profiles []profile.Profile `koanf:"profiles"`
+	TempDir  string                `koanf:"tempdir"`
+	Profiles []transcoding.Profile `koanf:"profiles"`
 }
 
 func ParseConfig(p string) (Config, error) {

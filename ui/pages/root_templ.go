@@ -12,12 +12,12 @@ import (
 	"github.com/axzilla/templui/component/button"
 	"github.com/axzilla/templui/component/label"
 	"github.com/axzilla/templui/component/modal"
-	"github.com/royalcat/easy-transcoder/internal/profile"
+	"github.com/royalcat/easy-transcoder/internal/transcoding"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-func Root(profiles []profile.Profile) templ.Component {
+func Root(profiles []transcoding.Profile) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -72,7 +72,7 @@ func Root(profiles []profile.Profile) templ.Component {
 	})
 }
 
-func createTaskModalButton(profiles []profile.Profile) templ.Component {
+func createTaskModalButton(profiles []transcoding.Profile) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

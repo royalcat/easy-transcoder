@@ -1,9 +1,9 @@
 package config
 
-import "github.com/royalcat/easy-transcoder/internal/profile"
+import "github.com/royalcat/easy-transcoder/internal/transcoding"
 
 var DefaultConfig = Config{
-	Profiles: []profile.Profile{
+	Profiles: []transcoding.Profile{
 		{
 			Name: "H264 Ultra Fast",
 			Params: map[string]string{

@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"github.com/axzilla/templui/component/button"
 	"github.com/axzilla/templui/component/separator"
 	"github.com/axzilla/templui/component/spinner"
@@ -31,6 +32,56 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 				@elements.FileInfo(tempFile)
 			</div>
 		</div>
+		<div class="my-6 p-4 border rounded bg-card">
+			<div class="text-lg font-bold mb-3 text-center">Video Quality Metrics</div>
+			<div class="flex flex-row gap-4">
+				// <div
+				// 	id="vmaf-score"
+				// 	class="flex flex-col items-center border rounded p-3"
+				// 	hx-get={ "/metrics/vmaf?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile) }
+				// 	hx-trigger="load"
+				// 	hx-target="#vmaf-score"
+				// 	hx-swap="innerHTML"
+				// >
+				// 	<div class="flex items-center justify-center h-full">
+				// 		<span class="mr-2">Calculating VMAF</span>
+				// 		@spinner.Spinner(spinner.Props{
+				// 			Size: spinner.SizeSm,
+				// 		})
+				// 	</div>
+				// </div>
+				<div
+					id="psnr-score"
+					class="flex flex-col items-center border rounded p-3"
+					hx-get={ "/metrics/psnr?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile) }
+					hx-trigger="load"
+					hx-target="#psnr-score"
+					hx-swap="innerHTML"
+				>
+					<div class="flex items-center justify-center h-full">
+						<span class="mr-2">Calculating PSNR</span>
+						@spinner.Spinner(spinner.Props{
+							Size: spinner.SizeSm,
+						})
+					</div>
+				</div>
+				<div
+					id="ssim-score"
+					class="flex flex-col items-center border rounded p-3"
+					hx-get={ "/metrics/ssim?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile) }
+					hx-trigger="load"
+					hx-target="#ssim-score"
+					hx-swap="innerHTML"
+				>
+					<div class="flex items-center justify-center h-full">
+						<span class="mr-2">Calculating SSIM</span>
+						@spinner.Spinner(spinner.Props{
+							Size: spinner.SizeSm,
+						})
+					</div>
+				</div>
+			</div>
+		</div>
 		<div class="flex gap-2">
 			@button.Button(button.Props{
 				Type: "submit",
@@ -57,4 +108,37 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 			Size: spinner.SizeLg,
 		})
 	</span>
+}
+
+templ VMafScore(score float64) {
+	<div class="flex flex-col items-center">
+		<div class="font-semibold">VMAF</div>
+		<div class="text-lg">{ fmt.Sprintf("%.2f", score) }</div>
+		<div class="text-xs text-muted-foreground">
+			<p>0-100 scale</p>
+			<p>>90: visually identical</p>
+		</div>
+	</div>
+}
+
+templ PsnrScore(score float64) {
+	<div class="flex flex-col items-center">
+		<div class="font-semibold">PSNR</div>
+		<div class="text-lg">{ fmt.Sprintf("%.2f", score) }</div>
+		<div class="text-xs text-muted-foreground">
+			<p>Higher is better</p>
+			<p>>50 dB: excellent</p>
+		</div>
+	</div>
+}
+
+templ SsimScore(score float64) {
+	<div class="flex flex-col items-center">
+		<div class="font-semibold">SSIM</div>
+		<div class="text-lg">{ fmt.Sprintf("%.4f", score) }</div>
+		<div class="text-xs text-muted-foreground">
+			<p>0-1 scale</p>
+			<p>>0.95: high quality</p>
+		</div>
+	</div>
 }
