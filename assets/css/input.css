@@ -1,9 +1,6 @@
 @import "tailwindcss";
 
-@source "./ui";
-@source "./ui";
-@source "${GOPATH}/pkg/mod/github.com/axzilla";
-@source "${GOPATH}/pkg/mod/github.com/axzilla";
+@source "/home/royalcat/.go/pkg/mod/github.com/axzilla/templui@*/**/*.{go,templ}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -31,6 +28,8 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+
+  --container-2xl: 1400px;
 }
 
 :root {
