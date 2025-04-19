@@ -61,7 +61,7 @@ func (q *Processor) AddTask(path, preset string) {
 func (q *Processor) CancelTask(id uint64) error {
 	q.logger.Info("cancelling task", "task_id", id)
 	q.tasks[id].cancelled.Store(true)
-	if q.tasks[id].cmd == nil {
+	if q.tasks[id].cmd != nil {
 		q.tasks[id].cmd.Process.Signal(syscall.SIGTERM)
 	}
 
