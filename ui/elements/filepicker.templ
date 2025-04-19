@@ -4,9 +4,11 @@ import (
 	"github.com/axzilla/templui/component/button"
 	"github.com/axzilla/templui/component/input"
 	"github.com/axzilla/templui/icon"
+	"github.com/dustin/go-humanize"
 	"net/url"
 	"os"
 	"path"
+	"sort"
 	"strings"
 )
 
@@ -25,7 +27,16 @@ func isVideoFile(name string) bool {
 	return false
 }
 
-templ FilePicker(p string) {
+// FileEntry represents a file with its info for sorting
+type FileEntry struct {
+	Name    string
+	Path    string
+	IsDir   bool
+	Size    int64
+	ModTime string
+}
+
+templ FilePicker(p string, sortOption string) {
 	<div id="filepicker">
 		{{
 			info, err := os.Stat(p)
@@ -60,7 +71,7 @@ templ FilePicker(p string) {
 			</div>
 			<div class="h-96 overflow-auto">
 				if info.IsDir() {
-					@filelist(p)
+					@filelist(p, sortOption)
 				} else {
 					@FileInfo(p)
 				}
@@ -69,35 +80,162 @@ templ FilePicker(p string) {
 	</div>
 }
 
-templ filelist(p string) {
+templ filelist(p string, sortOption string) {
 	{{
 		files, err := os.ReadDir(p)
 		if err != nil {
 			return err
 		}
-	}}
-	<ul class="flex flex-col gap-3">
+
+		// Collect file entries for sorting
+		var fileEntries []FileEntry
+		var dirEntries []FileEntry
+
 		for _, file := range files {
-			{{
-				urlpath := url.QueryEscape(path.Join(p, file.Name()))
-				showFile := file.IsDir() || isVideoFile(file.Name())
-			}}
+			isDir := file.IsDir()
+			showFile := isDir || isVideoFile(file.Name())
+
 			if showFile {
-				if file.IsDir() {
-					<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
-						<li class="flex items-center gap-2">
-							@icon.Folder()
-							<div class="flex hover:underline">{ file.Name() }</div>
-						</li>
-					</a>
-				} else {
-					<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
-						<li class="flex items-center gap-2">
-							@icon.File()
-							<div class="flex hover:underline">{ file.Name() }</div>
-						</li>
-					</a>
+				info, err := file.Info()
+				if err != nil {
+					continue
 				}
+
+				entry := FileEntry{
+					Name:    file.Name(),
+					Path:    path.Join(p, file.Name()),
+					IsDir:   isDir,
+					Size:    info.Size(),
+					ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
+				}
+
+				if isDir {
+					dirEntries = append(dirEntries, entry)
+				} else {
+					fileEntries = append(fileEntries, entry)
+				}
+			}
+		}
+
+		// Sort directories and files based on option
+		switch sortOption {
+		case "size_desc":
+			sort.Slice(fileEntries, func(i, j int) bool {
+				return fileEntries[i].Size > fileEntries[j].Size
+			})
+		case "size_asc":
+			sort.Slice(fileEntries, func(i, j int) bool {
+				return fileEntries[i].Size < fileEntries[j].Size
+			})
+		case "name_desc":
+			sort.Slice(dirEntries, func(i, j int) bool {
+				return dirEntries[i].Name > dirEntries[j].Name
+			})
+			sort.Slice(fileEntries, func(i, j int) bool {
+				return fileEntries[i].Name > fileEntries[j].Name
+			})
+		default: // name_asc
+			sort.Slice(dirEntries, func(i, j int) bool {
+				return dirEntries[i].Name < dirEntries[j].Name
+			})
+			sort.Slice(fileEntries, func(i, j int) bool {
+				return fileEntries[i].Name < fileEntries[j].Name
+			})
+		}
+
+		// Combine directories and files
+		allEntries := append(dirEntries, fileEntries...)
+	}}
+	<div class="flex justify-between items-center mb-3">
+		<div class="text-sm font-medium">Sort by:</div>
+		<div class="flex space-x-2">
+			{{
+				nameAscVariant := button.VariantGhost
+				if sortOption == "name_asc" {
+					nameAscVariant = button.VariantSecondary
+				}
+			}}
+			@button.Button(button.Props{
+				Variant:  nameAscVariant,
+				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=name_asc",
+				HxTarget: "#filepicker",
+				HxSwap:   "outerHTML",
+			}) {
+				Name ↑
+			}
+			{{
+				nameDescVariant := button.VariantGhost
+				if sortOption == "name_desc" {
+					nameDescVariant = button.VariantSecondary
+				}
+			}}
+			@button.Button(button.Props{
+				Variant:  nameDescVariant,
+				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=name_desc",
+				HxTarget: "#filepicker",
+				HxSwap:   "outerHTML",
+			}) {
+				Name ↓
+			}
+			{{
+					sizeAscVariant := button.VariantGhost
+					if sortOption == "size_asc" {
+						sizeAscVariant = button.VariantSecondary
+					}
+			}}
+			@button.Button(button.Props{
+				Variant:  sizeAscVariant,
+				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=size_asc",
+				HxTarget: "#filepicker",
+				HxSwap:   "outerHTML",
+			}) {
+				Size ↑
+			}
+			{{
+			sizeDescVariant := button.VariantGhost
+			if sortOption == "size_desc" {
+				sizeDescVariant = button.VariantSecondary
+			}
+			}}
+			@button.Button(button.Props{
+				Variant:  sizeDescVariant,
+				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=size_desc",
+				HxTarget: "#filepicker",
+				HxSwap:   "outerHTML",
+			}) {
+				Size ↓
+			}
+		</div>
+	</div>
+	<ul class="flex flex-col gap-3">
+		for _, entry := range allEntries {
+			{{
+				urlpath := url.QueryEscape(entry.Path)
+			}}
+			if entry.IsDir {
+				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+					<li class="flex justify-between items-center group">
+						<div class="flex items-center gap-2">
+							@icon.Folder()
+							<div class="flex hover:underline">{ entry.Name }</div>
+						</div>
+						<div class="text-sm text-muted-foreground">
+							Directory
+						</div>
+					</li>
+				</a>
+			} else {
+				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+					<li class="flex justify-between items-center group">
+						<div class="flex items-center gap-2">
+							@icon.File()
+							<div class="flex hover:underline">{ entry.Name }</div>
+						</div>
+						<div class="text-sm text-muted-foreground">
+							{ humanize.Bytes(uint64(entry.Size)) }
+						</div>
+					</li>
+				</a>
 			}
 		}
 	</ul>

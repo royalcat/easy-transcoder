@@ -164,12 +164,19 @@ type server struct {
 
 func (s *server) getfilebrowser(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
+	sort := r.URL.Query().Get("sort")
 
-	s.logger.Info("file browser request", "path", path)
+	// Default to name_asc if no sort parameter is provided
+	if sort == "" {
+		sort = "name_asc"
+	}
 
-	err := elements.FilePicker(path).Render(r.Context(), w)
+	s.logger.Info("file browser request", "path", path, "sort", sort)
+
+	// Pass the sort parameter to the FilePicker component
+	err := elements.FilePicker(path, sort).Render(r.Context(), w)
 	if err != nil {
-		s.logger.Error("file browser render error", "path", path, "error", err)
+		s.logger.Error("file browser render error", "path", path, "sort", sort, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

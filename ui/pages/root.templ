@@ -54,10 +54,12 @@ templ createTaskModalButton(profiles []transcoding.Profile) {
 					}) {
 						File
 					}
-					@elements.FilePicker("./media")
+					@elements.FilePicker("./media", "name_asc")
 				</div>
 			}
-			@modal.Footer() {
+			@modal.Footer(modal.FooterProps{
+				Class: "flex flex-row-reverse",
+			}) {
 				<div class="flex gap-4">
 					@modal.Close(modal.CloseProps{
 						ModalID: "create-task",

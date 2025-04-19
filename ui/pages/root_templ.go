@@ -248,7 +248,7 @@ func createTaskModalButton(profiles []transcoding.Profile) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = elements.FilePicker("./media").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = elements.FilePicker("./media", "name_asc").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -375,7 +375,9 @@ func createTaskModalButton(profiles []transcoding.Profile) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = modal.Footer().Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = modal.Footer(modal.FooterProps{
+				Class: "flex flex-row-reverse",
+			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
