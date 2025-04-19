@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/sys/unix"
 )
 
 // ResolveTask handles the final resolution of a completed task.
@@ -84,10 +86,14 @@ func (q *Processor) resolveTask(task *task, replace bool) error {
 }
 
 // replaceFile replaces the destination file with the contents of the source file.
+// Uses a safer approach with a single temporary file in the same directory as the destination.
 func (q *Processor) replaceFile(src, dst string) error {
 	log := q.logger.With("src", src, "dst", dst)
 
 	log.Debug("replacing file")
+
+	// Create a temporary file in the same directory as the destination
+	tmpFile := filepath.Join(filepath.Dir(dst), ".tmp_"+filepath.Base(dst))
 
 	// Open the source file for reading
 	srcFile, err := os.Open(src)
@@ -97,23 +103,73 @@ func (q *Processor) replaceFile(src, dst string) error {
 	}
 	defer srcFile.Close()
 
-	// Create the destination file for writing
-	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	// Get source file size for preallocation
+	srcInfo, err := srcFile.Stat()
 	if err != nil {
-		log.Error("failed to create destination file", "error", err)
+		log.Error("failed to get source file stats", "error", err)
 		return err
 	}
-	defer dstFile.Close()
+	srcSize := srcInfo.Size()
 
-	// Copy the contents from the source file to the destination file
-	bytesWritten, err := io.Copy(dstFile, srcFile)
+	// Create the temporary file for writing
+	tmpDstFile, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Error("failed to create temporary file", "error", err)
+		return err
+	}
+	defer func() {
+		if tmpDstFile != nil {
+			tmpDstFile.Close()
+		}
+	}()
+
+	// Preallocate space for the file to prevent fragmentation and ensure space is available
+	if srcSize > 0 {
+		fd := int(tmpDstFile.Fd())
+		err = unix.Fallocate(fd, 0, 0, srcSize)
+		if err != nil {
+			log.Warn("file preallocation failed, continuing with regular copy", "error", err)
+			// Continue despite preallocation error - it's just an optimization
+		} else {
+			log.Debug("preallocated file space", "size", srcSize)
+		}
+	}
+
+	// Copy the contents from the source file to the temporary file
+	bytesWritten, err := io.Copy(tmpDstFile, srcFile)
 	if err != nil {
 		log.Error("failed to copy file contents", "error", err)
+		tmpDstFile.Close()
+		tmpDstFile = nil
+		os.Remove(tmpFile) // Clean up temp file on error
+		return err
+	}
+
+	// Close the temporary file before renaming
+	if err = tmpDstFile.Close(); err != nil {
+		log.Error("failed to close temporary file", "error", err)
+		tmpDstFile = nil
+		os.Remove(tmpFile)
+		return err
+	}
+	tmpDstFile = nil
+
+	// Preserve original file permissions if destination file exists
+	if fileInfo, err := os.Stat(dst); err == nil {
+		if err = os.Chmod(tmpFile, fileInfo.Mode()); err != nil {
+			log.Warn("failed to preserve file permissions", "error", err)
+			// Continue despite permission error
+		}
+	}
+
+	// Atomically rename the temporary file to the destination
+	if err = os.Rename(tmpFile, dst); err != nil {
+		log.Error("failed to rename temporary file to destination", "error", err)
+		os.Remove(tmpFile) // Clean up temp file on error
 		return err
 	}
 
 	q.logger.Debug("file copied successfully", "bytes", bytesWritten)
-
 	q.logger.Info("file replaced successfully", "dst", dst)
 	return nil
 }
