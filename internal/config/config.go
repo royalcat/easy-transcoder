@@ -73,11 +73,33 @@ func ParseConfig(p string) (Config, error) {
 		return Config{}, err
 	}
 
-	if config.TranscodingNiceness < -20 || config.TranscodingNiceness > 19 {
-		return Config{}, errors.New("transcoding_niceness must be between -20 and 19")
+	if err := validateConfig(config); err != nil {
+		return Config{}, err
 	}
 
 	return config, nil
+}
+
+func validateConfig(config Config) error {
+	if config.TranscodingNiceness < -20 || config.TranscodingNiceness > 19 {
+		return errors.New("transcoding_niceness must be between -20 and 19")
+	}
+
+	if config.TempDir != "" {
+		info, err := os.Stat(config.TempDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return errors.New("tempdir does not exist")
+			}
+			return errors.New("failed to access tempdir: " + err.Error())
+		}
+
+		if !info.IsDir() {
+			return errors.New("tempdir is not a directory")
+		}
+	}
+
+	return nil
 }
 
 func cleanEnvVar(s string) string {
