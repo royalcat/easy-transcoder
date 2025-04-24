@@ -28,6 +28,8 @@ type Config struct {
 	TempDir  string                `koanf:"tempdir"`
 	Profiles []transcoding.Profile `koanf:"profiles"`
 	Logging  LogConfig             `koanf:"logging"`
+
+	TranscodingNiceness int `koanf:"transcoding_niceness"`
 }
 
 // GetLogLevel returns the slog.Level based on the configured string level
@@ -69,6 +71,10 @@ func ParseConfig(p string) (Config, error) {
 	var config Config
 	if err := k.Unmarshal("", &config); err != nil {
 		return Config{}, err
+	}
+
+	if config.TranscodingNiceness < -20 || config.TranscodingNiceness > 19 {
+		return Config{}, errors.New("transcoding_niceness must be between -20 and 19")
 	}
 
 	return config, nil

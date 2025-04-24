@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"syscall"
 
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
@@ -69,7 +70,21 @@ func (q *Processor) processTask(task *task) {
 
 	log.Info("starting transcoding", "command", strings.Join(cmd.Args, " "))
 
-	err = cmd.Run()
+	err = cmd.Start()
+	if err != nil {
+		log.Error("failed to start transcoding", "error", err)
+		task.MarkFailed(fmt.Errorf("failed to start transcoding: %s", err))
+		return
+	}
+
+	if q.config.TranscodingNiceness != 0 {
+		err = syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, q.config.TranscodingNiceness)
+		if err != nil {
+			log.Warn("failed to set process priority", "error", err)
+		}
+	}
+
+	err = cmd.Wait()
 
 	// Ignore error if the task was cancelled
 	if task.cancelled.Load() {
