@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path"
@@ -68,6 +69,9 @@ func (q *Processor) processTask(task *task) {
 	cmd := preset.Compile(task.Input, task.TempFile, progressSock)
 	task.SetCommand(cmd)
 
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
 	log.Info("starting transcoding", "command", strings.Join(cmd.Args, " "))
 
 	err = cmd.Start()
@@ -94,8 +98,8 @@ func (q *Processor) processTask(task *task) {
 	}
 
 	if err != nil {
-		log.Error("transcoding failed", "error", err)
-		task.MarkFailed(fmt.Errorf("transcoding failed: %s", err))
+		log.Error("transcoding failed", "error", err, "stderr", stderr.String())
+		task.MarkFailed(fmt.Errorf("transcoding failed: %s, output: %s", err, stderr.String()))
 		return
 	}
 
