@@ -99,7 +99,7 @@ func (q *Processor) processTask(task *task) {
 
 	if err != nil {
 		log.Error("transcoding failed", "error", err, "stderr", stderr.String())
-		task.MarkFailed(fmt.Errorf("transcoding failed: %s, output: %s", err, stderr.String()))
+		task.MarkFailed(fmt.Errorf("transcoding failed: %s, see logs", err))
 		return
 	}
 
