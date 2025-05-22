@@ -24,16 +24,19 @@ func (q *Processor) ResolveTask(ctx context.Context, taskID uint64, replace bool
 
 	task.MarkStatusReplacing()
 
-	// Perform the actual resolution
-	err := q.resolveTask(task, replace)
+	go func() {
+		// Perform the actual resolution
+		err := q.resolveTask(task, replace)
 
-	if err != nil {
-		log.Error("task resolution failed", "error", err)
-		task.MarkFailed(err)
-	} else {
-		q.logger.Info("task resolved successfully")
-		task.MarkCompleted()
-	}
+		if err != nil {
+			log.Error("task resolution failed", "error", err)
+			task.MarkFailed(err)
+		} else {
+			q.logger.Info("task resolved successfully")
+			task.MarkCompleted()
+		}
+	}()
+
 }
 
 // resolveTask completes a task that's waiting for resolution by either
