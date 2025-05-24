@@ -2,6 +2,7 @@
 package processor
 
 import (
+	"bytes"
 	"os/exec"
 	"sync/atomic"
 	"syscall"
@@ -57,6 +58,7 @@ type task struct {
 	cmd       *exec.Cmd   // FFmpeg command reference
 	startedAt time.Time   // When processing started
 	endedAt   time.Time   // When processing completed
+	stderr    bytes.Buffer
 }
 
 // newTask creates a new transcoding task in pending state.
