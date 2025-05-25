@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"time"
 
@@ -224,6 +225,8 @@ func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
 			Error:     errorMessage,
 		})
 	}
+	slices.Reverse(queue)
+
 	s.logger.Debug("queue request", "queue_length", len(queue))
 	err := elements.Queue(queue).Render(r.Context(), w)
 	if err != nil {
