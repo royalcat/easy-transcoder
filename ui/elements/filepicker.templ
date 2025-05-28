@@ -50,7 +50,7 @@ templ FilePicker(p string, sortOption string) {
 					Size:     button.SizeIcon,
 					Variant:  button.VariantGhost,
 					Class:    "flex",
-					HxGet:    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)),
+					HxGet:    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)) + "&sort=" + url.QueryEscape(sortOption),
 					HxTarget: "#filepicker",
 					HxSwap:   "outerHTML",
 				}) {
@@ -213,7 +213,7 @@ templ filelist(p string, sortOption string) {
 				urlpath := url.QueryEscape(entry.Path)
 			}}
 			if entry.IsDir {
-				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+				<a hx-get={ "/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption) } hx-target="#filepicker" hx-swap="outerHTML">
 					<li class="flex justify-between items-center group">
 						<div class="flex items-center gap-2">
 							@icon.Folder()
@@ -225,7 +225,7 @@ templ filelist(p string, sortOption string) {
 					</li>
 				</a>
 			} else {
-				<a hx-get={ "/elements/filepicker?path=" + urlpath } hx-target="#filepicker" hx-swap="outerHTML">
+				<a hx-get={ "/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption) } hx-target="#filepicker" hx-swap="outerHTML">
 					<li class="flex justify-between items-center group">
 						<div class="flex items-center gap-2">
 							@icon.File()

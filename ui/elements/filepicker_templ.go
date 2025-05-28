@@ -100,7 +100,7 @@ func FilePicker(p string, sortOption string) templ.Component {
 			Size:     button.SizeIcon,
 			Variant:  button.VariantGhost,
 			Class:    "flex",
-			HxGet:    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)),
+			HxGet:    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)) + "&sort=" + url.QueryEscape(sortOption),
 			HxTarget: "#filepicker",
 			HxSwap:   "outerHTML",
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
@@ -372,9 +372,9 @@ func filelist(p string, sortOption string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath)
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 216, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 216, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -411,9 +411,9 @@ func filelist(p string, sortOption string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var10 string
-				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath)
+				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 228, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 228, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
