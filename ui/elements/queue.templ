@@ -32,7 +32,7 @@ type TaskState struct {
 }
 
 templ Queue(tasks []TaskState) {
-	<div id="queue-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+	<div id="queue-grid" class="flex flex-row flex-wrap gap-6 w-full">
 		for _, task := range tasks {
 			@taskCard(task)
 		}
@@ -40,7 +40,7 @@ templ Queue(tasks []TaskState) {
 }
 
 templ taskCard(task TaskState) {
-	<div class="min-w-sm max-w-2xl h-90 rounded-lg border text-card-foreground bg-card p-12 shadow-xs">
+	<div class="w-lg h-90 rounded-lg border text-card-foreground bg-card p-12 shadow-xs">
 		<div class="flex flex-col gap-2 h-full w-full">
 			<div class="flex flex-none">
 				@label.Label(label.Props{
