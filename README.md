@@ -95,18 +95,10 @@ docker run -p 8080:8080 -v /path/to/media:/media -v /path/to/config:/app/config 
 - [x] Profiles
 - [x] Task cancel
 - [ ] Better resolution UI
-- [ ] VMAF
+- [x] VMAF
 - [ ] Browser Notifications
 - [x] ffmpeg version check
 - [ ] download custom ffmpeg binary
 - [x] cpu usage
 - [ ] SSE for queue updates
 - [ ] task mutiprocessing
-
-## Contributing
-
-Contributions are welcome! Feel free to open issues or submit pull requests.
-
-## License
-
-[Add your license information here]
