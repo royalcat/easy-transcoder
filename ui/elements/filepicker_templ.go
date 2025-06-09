@@ -37,14 +37,26 @@ func isVideoFile(name string) bool {
 
 // FileEntry represents a file with its info for sorting
 type FileEntry struct {
-	Name    string
-	Path    string
-	IsDir   bool
-	Size    int64
-	ModTime string
+	Name      string
+	Path      string
+	IsDir     bool
+	Size      int64
+	ModTime   string
+	InQueue   bool
+	QueueInfo string
 }
 
-func FilePicker(p string, sortOption string) templ.Component {
+// isFileInQueue checks if a file path exists in the task queue and returns its status if found
+func isFileInQueue(filePath string, queue []TaskState) (bool, string) {
+	for _, task := range queue {
+		if task.InputFile == filePath {
+			return true, string(task.Status)
+		}
+	}
+	return false, ""
+}
+
+func FilePicker(p string, sortOption string, queue []TaskState) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -124,7 +136,7 @@ func FilePicker(p string, sortOption string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if info.IsDir() {
-			templ_7745c5c3_Err = filelist(p, sortOption).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = filelist(p, sortOption, queue).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -142,7 +154,7 @@ func FilePicker(p string, sortOption string) templ.Component {
 	})
 }
 
-func filelist(p string, sortOption string) templ.Component {
+func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -183,12 +195,17 @@ func filelist(p string, sortOption string) templ.Component {
 					continue
 				}
 
+				filePath := path.Join(p, file.Name())
+				inQueue, queueStatus := isFileInQueue(filePath, queue)
+
 				entry := FileEntry{
-					Name:    file.Name(),
-					Path:    path.Join(p, file.Name()),
-					IsDir:   isDir,
-					Size:    info.Size(),
-					ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
+					Name:      file.Name(),
+					Path:      filePath,
+					IsDir:     isDir,
+					Size:      info.Size(),
+					ModTime:   info.ModTime().Format("2006-01-02 15:04:05"),
+					InQueue:   inQueue,
+					QueueInfo: queueStatus,
 				}
 
 				if isDir {
@@ -374,7 +391,7 @@ func filelist(p string, sortOption string) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 216, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 233, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -395,7 +412,7 @@ func filelist(p string, sortOption string) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 220, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 237, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -413,7 +430,7 @@ func filelist(p string, sortOption string) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 228, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 245, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -427,39 +444,58 @@ func filelist(p string, sortOption string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"flex hover:underline\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
+				if entry.InQueue {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"ml-2 text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var11 string
+					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(entry.QueueInfo)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 251, Col: 26}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				}
-				var templ_7745c5c3_Var11 string
-				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Name)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 232, Col: 53}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></div><div class=\"text-sm text-muted-foreground\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex hover:underline\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var12 string
-				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(humanize.Bytes(uint64(entry.Size)))
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 235, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 254, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></li></a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div></div><div class=\"text-sm text-muted-foreground\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var13 string
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(humanize.Bytes(uint64(entry.Size)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 257, Col: 43}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></li></a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</ul>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</ul>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

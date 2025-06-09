@@ -29,14 +29,26 @@ func isVideoFile(name string) bool {
 
 // FileEntry represents a file with its info for sorting
 type FileEntry struct {
-	Name    string
-	Path    string
-	IsDir   bool
-	Size    int64
-	ModTime string
+	Name      string
+	Path      string
+	IsDir     bool
+	Size      int64
+	ModTime   string
+	InQueue   bool
+	QueueInfo string
 }
 
-templ FilePicker(p string, sortOption string) {
+// isFileInQueue checks if a file path exists in the task queue and returns its status if found
+func isFileInQueue(filePath string, queue []TaskState) (bool, string) {
+	for _, task := range queue {
+		if task.InputFile == filePath {
+			return true, string(task.Status)
+		}
+	}
+	return false, ""
+}
+
+templ FilePicker(p string, sortOption string, queue []TaskState) {
 	<div id="filepicker">
 		{{
 			info, err := os.Stat(p)
@@ -71,7 +83,7 @@ templ FilePicker(p string, sortOption string) {
 			</div>
 			<div class="h-96 overflow-auto">
 				if info.IsDir() {
-					@filelist(p, sortOption)
+					@filelist(p, sortOption, queue)
 				} else {
 					@FileInfo(p)
 				}
@@ -80,7 +92,7 @@ templ FilePicker(p string, sortOption string) {
 	</div>
 }
 
-templ filelist(p string, sortOption string) {
+templ filelist(p string, sortOption string, queue []TaskState) {
 	{{
 		files, err := os.ReadDir(p)
 		if err != nil {
@@ -101,12 +113,17 @@ templ filelist(p string, sortOption string) {
 					continue
 				}
 
+				filePath := path.Join(p, file.Name())
+				inQueue, queueStatus := isFileInQueue(filePath, queue)
+
 				entry := FileEntry{
-					Name:    file.Name(),
-					Path:    path.Join(p, file.Name()),
-					IsDir:   isDir,
-					Size:    info.Size(),
-					ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
+					Name:      file.Name(),
+					Path:      filePath,
+					IsDir:     isDir,
+					Size:      info.Size(),
+					ModTime:   info.ModTime().Format("2006-01-02 15:04:05"),
+					InQueue:   inQueue,
+					QueueInfo: queueStatus,
 				}
 
 				if isDir {
@@ -229,6 +246,11 @@ templ filelist(p string, sortOption string) {
 					<li class="flex justify-between items-center group">
 						<div class="flex items-center gap-2">
 							@icon.File()
+							if entry.InQueue {
+								<div class="ml-2 text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+									{ entry.QueueInfo }
+								</div>
+							}
 							<div class="flex hover:underline">{ entry.Name }</div>
 						</div>
 						<div class="text-sm text-muted-foreground">

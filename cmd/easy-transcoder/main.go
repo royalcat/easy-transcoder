@@ -63,9 +63,9 @@ func main() {
 
 	assetsRoutes(mux)
 
-	mux.Handle("GET /", templHandler(pages.Root(cfg.Profiles)))
+	mux.Handle("GET /", templHandler(pages.Root(cfg.Profiles, s.queue())))
 	mux.Handle("GET /resolver", http.HandlerFunc(s.pageResolver))
-	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(cfg.Profiles)))
+	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(cfg.Profiles, s.queue())))
 
 	mux.Handle("GET /elements/filepicker", http.HandlerFunc(s.getfilebrowser))
 	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(s.getfileinfo))
@@ -174,8 +174,7 @@ func (s *server) getfilebrowser(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Info("file browser request", "path", path, "sort", sort)
 
-	// Pass the sort parameter to the FilePicker component
-	err := elements.FilePicker(path, sort).Render(r.Context(), w)
+	err := elements.FilePicker(path, sort, s.queue()).Render(r.Context(), w)
 	if err != nil {
 		s.logger.Error("file browser render error", "path", path, "sort", sort, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -205,26 +204,35 @@ func (s *server) getcpumonitor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
+func (s *server) queue() []elements.TaskState {
 	queue := []elements.TaskState{}
 	for _, task := range s.Queue.GetQueue() {
-		errorMessage := ""
-		if task.Error != nil {
-			errorMessage = task.Error.Error()
-		}
-
-		queue = append(queue, elements.TaskState{
-			ID:        strconv.Itoa(int(task.ID)),
-			Preset:    task.Preset,
-			FileName:  path.Base(task.Input),
-			Status:    task.Status,
-			Progress:  task.Progress,
-			InputFile: task.Input,
-			TempFile:  task.TempFile,
-			CreatedAt: task.CreateAt,
-			Error:     errorMessage,
-		})
+		queue = append(queue, mapTaskState(task))
 	}
+	return queue
+}
+
+func mapTaskState(task processor.TaskState) elements.TaskState {
+	errorMessage := ""
+	if task.Error != nil {
+		errorMessage = task.Error.Error()
+	}
+
+	return elements.TaskState{
+		ID:        strconv.Itoa(int(task.ID)),
+		Preset:    task.Preset,
+		FileName:  path.Base(task.Input),
+		Status:    task.Status,
+		Progress:  task.Progress,
+		InputFile: task.Input,
+		TempFile:  task.TempFile,
+		CreatedAt: task.CreateAt,
+		Error:     errorMessage,
+	}
+}
+
+func (s *server) getqueue(w http.ResponseWriter, r *http.Request) {
+	queue := s.queue()
 	slices.Reverse(queue)
 
 	s.logger.Debug("queue request", "queue_length", len(queue))
@@ -394,22 +402,7 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the task and populate TaskState with rich information
 	for _, task := range s.Queue.GetQueue() {
 		if task.ID == uint64(taskId) {
-			errorMessage := ""
-			if task.Error != nil {
-				errorMessage = task.Error.Error()
-			}
-
-			taskState = elements.TaskState{
-				ID:        strconv.Itoa(int(task.ID)),
-				Preset:    task.Preset,
-				FileName:  path.Base(task.Input),
-				Status:    task.Status,
-				Progress:  task.Progress,
-				InputFile: task.Input,
-				TempFile:  task.TempFile,
-				CreatedAt: task.CreateAt,
-				Error:     errorMessage,
-			}
+			taskState = mapTaskState(task)
 			break
 		}
 	}

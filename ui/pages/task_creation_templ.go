@@ -16,7 +16,7 @@ import (
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-func TaskCreation(profiles []transcoding.Profile) templ.Component {
+func TaskCreation(profiles []transcoding.Profile, queue []elements.TaskState) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -53,7 +53,7 @@ func TaskCreation(profiles []transcoding.Profile) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = elements.FilePicker("./media", "name_asc").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = elements.FilePicker("./media", "name_asc", queue).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

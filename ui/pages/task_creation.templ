@@ -8,12 +8,12 @@ import (
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-templ TaskCreation(profiles []transcoding.Profile) {
+templ TaskCreation(profiles []transcoding.Profile, queue []elements.TaskState) {
 	@layouts.BaseLayout() {
 		<div class="flex flex-col gap-6">
 			<div class="flex gap-6">
 				<div class="flex-1 m-10">
-					@elements.FilePicker("./media", "name_asc")
+					@elements.FilePicker("./media", "name_asc", queue)
 				</div>
 				@separator.Separator(separator.Props{
 					Orientation: separator.OrientationVertical,

@@ -9,16 +9,16 @@ import (
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-templ Root(profiles []transcoding.Profile) {
+templ Root(profiles []transcoding.Profile, queue []elements.TaskState) {
 	@layouts.BaseLayout() {
 		<div class="flex flex-col gap-10">
-			@createTaskModalButton(profiles)
+			@createTaskModalButton(profiles, queue)
 			<div id="queue" hx-get="/elements/queue" hx-trigger="load, every 2s"></div>
 		</div>
 	}
 }
 
-templ createTaskModalButton(profiles []transcoding.Profile) {
+templ createTaskModalButton(profiles []transcoding.Profile, queue []elements.TaskState) {
 	@modal.Trigger(modal.TriggerProps{
 		ModalID: "create-task",
 		Class:   "w-24",
@@ -54,7 +54,7 @@ templ createTaskModalButton(profiles []transcoding.Profile) {
 					}) {
 						File
 					}
-					@elements.FilePicker("./media", "name_asc")
+					@elements.FilePicker("./media", "name_asc", queue)
 				</div>
 			}
 			@modal.Footer(modal.FooterProps{
