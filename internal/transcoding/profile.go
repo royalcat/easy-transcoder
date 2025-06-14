@@ -13,7 +13,9 @@ type Profile struct {
 }
 
 func (p *Profile) Compile(input, output, progressSock string) *exec.Cmd {
-	args := ffmpeg.KwArgs{}
+	args := ffmpeg.KwArgs{
+		"map": "0",
+	}
 	for k, v := range p.Params {
 		args[k] = v
 	}
