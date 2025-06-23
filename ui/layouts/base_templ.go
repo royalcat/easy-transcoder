@@ -111,7 +111,7 @@ func BaseLayout() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</head><body x-data=\"themeHandler\" x-bind:class=\"themeClasses\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<style>\n\t\t\t\t.htmx-indicator{\n\t\t\t\t\topacity:0;\n\t\t\t\t\ttransition: opacity 500ms ease-in;\n\t\t\t\t}\n\t\t\t\t.htmx-request .htmx-indicator{\n\t\t\t\t\topacity:1;\n\t\t\t\t}\n\t\t\t\t.htmx-request.htmx-indicator{\n\t\t\t\t\topacity:1;\n\t\t\t\t}\n\t\t\t</style></head><body x-data=\"themeHandler\" x-bind:class=\"themeClasses\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

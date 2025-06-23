@@ -8,6 +8,7 @@ import (
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 	"net/url"
+	"strings"
 )
 
 templ Resolver(task elements.TaskState) {
@@ -35,51 +36,28 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 		<div class="my-6 p-4 border rounded bg-card">
 			<div class="text-lg font-bold mb-3 text-center">Video Quality Metrics</div>
 			<div class="flex flex-row gap-4">
-				// <div
-				// 	id="vmaf-score"
-				// 	class="flex flex-col items-center border rounded p-3"
-				// 	hx-get={ "/metrics/vmaf?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile) }
-				// 	hx-trigger="load"
-				// 	hx-target="#vmaf-score"
-				// 	hx-swap="innerHTML"
-				// >
-				// 	<div class="flex items-center justify-center h-full">
-				// 		<span class="mr-2">Calculating VMAF</span>
+				// @button.Button(button.Props{
+				// 	Type: "button",
+				// 	Attributes: templ.Attributes{
+				// 		"id":              "vmaf-score",
+				// 		"hx-get":          "/metrics/vmaf?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile),
+				// 		"hx-disabled-elt": "this",
+				// 		"hx-indicator":    "#vmaf-spinner",
+				// 	},
+				// }) {
+				// 	<div class="flex items-center gap-2">
+				// 		<span>VMAF</span>
 				// 		@spinner.Spinner(spinner.Props{
-				// 			Size: spinner.SizeSm,
+				// 			ID:    "vmaf-spinner",
+				// 			Size:  spinner.SizeSm,
+				// 			Color: "text-primary-foreground",
+				// 			Class: "htmx-indicator",
 				// 		})
 				// 	</div>
-				// </div>
-				<div
-					id="psnr-score"
-					class="flex flex-col items-center border rounded p-3"
-					hx-get={ "/metrics/psnr?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile) }
-					hx-trigger="load"
-					hx-target="#psnr-score"
-					hx-swap="innerHTML"
-				>
-					<div class="flex items-center justify-center h-full">
-						<span class="mr-2">Calculating PSNR</span>
-						@spinner.Spinner(spinner.Props{
-							Size: spinner.SizeSm,
-						})
-					</div>
-				</div>
-				<div
-					id="ssim-score"
-					class="flex flex-col items-center border rounded p-3"
-					hx-get={ "/metrics/ssim?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile) }
-					hx-trigger="load"
-					hx-target="#ssim-score"
-					hx-swap="innerHTML"
-				>
-					<div class="flex items-center justify-center h-full">
-						<span class="mr-2">Calculating SSIM</span>
-						@spinner.Spinner(spinner.Props{
-							Size: spinner.SizeSm,
-						})
-					</div>
-				</div>
+				// }
+				@calculateScoreButton("vmaf", inputFile, tempFile)
+				@calculateScoreButton("psnr", inputFile, tempFile)
+				@calculateScoreButton("ssim", inputFile, tempFile)
 			</div>
 		</div>
 		<div class="flex gap-2">
@@ -110,8 +88,31 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 	</span>
 }
 
+templ calculateScoreButton(score, inputFile, tempFile string) {
+	@button.Button(button.Props{
+		Type: "button",
+		Attributes: templ.Attributes{
+			"id":              score + "-score",
+			"hx-get":          "/metrics/" + score + "?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile),
+			"hx-disabled-elt": "this",
+			"hx-indicator":    "#" + score + "-spinner",
+			"hx-swap":         "outerHTML",
+		},
+	}) {
+		<div class="flex items-center gap-2">
+			<span>{ strings.ToUpper(score) }</span>
+			@spinner.Spinner(spinner.Props{
+				ID:    score + "-spinner",
+				Size:  spinner.SizeSm,
+				Color: "text-primary-foreground",
+				Class: "htmx-indicator",
+			})
+		</div>
+	}
+}
+
 templ VMafScore(score float64) {
-	<div class="flex flex-col items-center">
+	<div class="flex flex-col items-center border rounded p-3">
 		<div class="font-semibold">VMAF</div>
 		<div class="text-lg">{ fmt.Sprintf("%.2f", score) }</div>
 		<div class="text-xs text-muted-foreground">
@@ -122,7 +123,7 @@ templ VMafScore(score float64) {
 }
 
 templ PsnrScore(score float64) {
-	<div class="flex flex-col items-center">
+	<div class="flex flex-col items-center border rounded p-3">
 		<div class="font-semibold">PSNR</div>
 		<div class="text-lg">{ fmt.Sprintf("%.2f", score) }</div>
 		<div class="text-xs text-muted-foreground">
@@ -133,7 +134,7 @@ templ PsnrScore(score float64) {
 }
 
 templ SsimScore(score float64) {
-	<div class="flex flex-col items-center">
+	<div class="flex flex-col items-center border rounded p-3">
 		<div class="font-semibold">SSIM</div>
 		<div class="text-lg">{ fmt.Sprintf("%.4f", score) }</div>
 		<div class="text-xs text-muted-foreground">
