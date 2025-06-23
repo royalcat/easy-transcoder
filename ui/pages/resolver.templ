@@ -36,25 +36,6 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 		<div class="my-6 p-4 border rounded bg-card">
 			<div class="text-lg font-bold mb-3 text-center">Video Quality Metrics</div>
 			<div class="flex flex-row gap-4">
-				// @button.Button(button.Props{
-				// 	Type: "button",
-				// 	Attributes: templ.Attributes{
-				// 		"id":              "vmaf-score",
-				// 		"hx-get":          "/metrics/vmaf?reference=" + url.QueryEscape(inputFile) + "&distorted=" + url.QueryEscape(tempFile),
-				// 		"hx-disabled-elt": "this",
-				// 		"hx-indicator":    "#vmaf-spinner",
-				// 	},
-				// }) {
-				// 	<div class="flex items-center gap-2">
-				// 		<span>VMAF</span>
-				// 		@spinner.Spinner(spinner.Props{
-				// 			ID:    "vmaf-spinner",
-				// 			Size:  spinner.SizeSm,
-				// 			Color: "text-primary-foreground",
-				// 			Class: "htmx-indicator",
-				// 		})
-				// 	</div>
-				// }
 				@calculateScoreButton("vmaf", inputFile, tempFile)
 				@calculateScoreButton("psnr", inputFile, tempFile)
 				@calculateScoreButton("ssim", inputFile, tempFile)
