@@ -3,12 +3,12 @@ package elements
 import (
 	"time"
 
-	"github.com/axzilla/templui/component/button"
-	"github.com/axzilla/templui/component/label"
-	"github.com/axzilla/templui/component/progress"
-	"github.com/axzilla/templui/component/tooltip"
-	"github.com/axzilla/templui/icon"
 	"github.com/royalcat/easy-transcoder/internal/processor"
+	"github.com/royalcat/easy-transcoder/templui/components/button"
+	"github.com/royalcat/easy-transcoder/templui/components/icon"
+	"github.com/royalcat/easy-transcoder/templui/components/label"
+	"github.com/royalcat/easy-transcoder/templui/components/progress"
+	"github.com/royalcat/easy-transcoder/templui/components/tooltip"
 )
 
 // TaskState represents the UI state of a task
@@ -69,8 +69,8 @@ templ taskCard(task TaskState) {
 						<div class="flex flex-row-reverse">
 							@button.Button(button.Props{
 								Variant: button.VariantDestructive,
-								HxPost:  "/submit/cancel",
 								Attributes: templ.Attributes{
+									"hx-post":   "/submit/cancel",
 									"hx-vals":   `{"taskid": "` + task.ID + `"}`,
 									"hx-target": "#queue-grid",
 									"hx-swap":   "outerHTML",
@@ -92,6 +92,7 @@ templ taskCard(task TaskState) {
 						<div class="flex flex-col gap-2">
 							@progress.Progress(progress.Props{
 								Value:     int(task.Progress * 100),
+								Max:       100,
 								Variant:   progress.VariantSuccess,
 								ShowValue: true,
 								Label:     "Processing",
@@ -102,8 +103,8 @@ templ taskCard(task TaskState) {
 										@button.Button(button.Props{
 											Variant: button.VariantDestructive,
 											Size:    button.SizeIcon,
-											HxPost:  "/submit/cancel",
 											Attributes: templ.Attributes{
+												"hx-post":   "/submit/cancel",
 												"hx-vals":   `{"taskid": "` + task.ID + `"}`,
 												"hx-target": "#queue-grid",
 												"hx-swap":   "outerHTML",

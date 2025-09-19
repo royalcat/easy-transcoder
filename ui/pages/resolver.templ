@@ -2,9 +2,9 @@ package pages
 
 import (
 	"fmt"
-	"github.com/axzilla/templui/component/button"
-	"github.com/axzilla/templui/component/separator"
-	"github.com/axzilla/templui/component/spinner"
+	"github.com/royalcat/easy-transcoder/templui/components/button"
+	"github.com/royalcat/easy-transcoder/templui/components/icon"
+	"github.com/royalcat/easy-transcoder/templui/components/separator"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 	"net/url"
@@ -63,8 +63,8 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 		</div>
 	</form>
 	<span id="spinner" class="hidden">
-		@spinner.Spinner(spinner.Props{
-			Size: spinner.SizeLg,
+		@icon.LoaderCircle(icon.Props{
+			Size: 16,
 		})
 	</span>
 }
@@ -82,9 +82,9 @@ templ calculateScoreButton(score, inputFile, tempFile string) {
 	}) {
 		<div class="flex items-center gap-2">
 			<span>{ strings.ToUpper(score) }</span>
-			@spinner.Spinner(spinner.Props{
-				ID:    score + "-spinner",
-				Size:  spinner.SizeSm,
+			@icon.LoaderCircle(icon.Props{
+				// ID:    score + "-spinner",
+				Size:  16,
 				Color: "text-primary-foreground",
 				Class: "htmx-indicator",
 			})

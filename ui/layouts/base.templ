@@ -1,7 +1,12 @@
 package layouts
 
 import (
-	"github.com/axzilla/templui/helper"
+	"github.com/royalcat/easy-transcoder/templui/components/dialog"
+	"github.com/royalcat/easy-transcoder/templui/components/input"
+	"github.com/royalcat/easy-transcoder/templui/components/label"
+	"github.com/royalcat/easy-transcoder/templui/components/popover"
+	"github.com/royalcat/easy-transcoder/templui/components/progress"
+	"github.com/royalcat/easy-transcoder/templui/components/selectbox"
 	"github.com/royalcat/easy-transcoder/ui/modules"
 )
 
@@ -45,7 +50,14 @@ templ BaseLayout() {
 			<!-- Font Awesome -->
 			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
 			<!-- Component scripts -->
-			@helper.ComponentScripts()
+			@dialog.Script()
+			@label.Script()
+			@popover.Script()
+			// @popover.Script()
+			@selectbox.Script()
+			@popover.Script()
+			@input.Script()
+			@progress.Script()
 			<!-- Theme switcher script -->
 			@themeSwitcherScript()
 			<style>

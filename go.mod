@@ -9,8 +9,8 @@ tool (
 )
 
 require (
-	github.com/a-h/templ v0.3.857
-	github.com/axzilla/templui v0.52.0
+	github.com/Oudwins/tailwind-merge-go v0.2.0
+	github.com/a-h/templ v0.3.943
 	github.com/dustin/go-humanize v1.0.1
 	github.com/knadh/koanf/parsers/yaml v1.0.0
 	github.com/knadh/koanf/providers/env v1.1.0
@@ -19,15 +19,14 @@ require (
 	github.com/knadh/koanf/v2 v2.2.0
 	github.com/shirou/gopsutil/v4 v4.25.3
 	github.com/u2takey/ffmpeg-go v0.5.0
-	golang.org/x/sys v0.32.0
+	golang.org/x/sys v0.34.0
 )
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	github.com/Oudwins/tailwind-merge-go v0.2.0 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/air-verse/air v1.61.7 // indirect
-	github.com/andybalholm/brotli v1.1.0 // indirect
+	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/bep/godartsass v1.2.0 // indirect
 	github.com/bep/godartsass/v2 v2.1.0 // indirect
@@ -63,11 +62,12 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
-	golang.org/x/tools v0.25.0 // indirect
+	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
+	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/tools v0.35.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

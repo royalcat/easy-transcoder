@@ -1,10 +1,10 @@
 package pages
 
 import (
-	"github.com/axzilla/templui/component/button"
-	"github.com/axzilla/templui/component/label"
-	"github.com/axzilla/templui/component/modal"
 	"github.com/royalcat/easy-transcoder/internal/transcoding"
+	"github.com/royalcat/easy-transcoder/templui/components/button"
+	"github.com/royalcat/easy-transcoder/templui/components/dialog"
+	"github.com/royalcat/easy-transcoder/templui/components/label"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
@@ -18,51 +18,51 @@ templ Root(profiles []transcoding.Profile, queue []elements.TaskState) {
 	}
 }
 
+const dialogId = "create-task-dialog"
+
 templ createTaskModalButton(profiles []transcoding.Profile, queue []elements.TaskState) {
-	@modal.Trigger(modal.TriggerProps{
-		ModalID: "create-task",
-		Class:   "w-24",
+	@dialog.Trigger(dialog.TriggerProps{
+		For: dialogId,
+		// Class: "w-24",
 	}) {
 		@button.Button(button.Props{
-			FullWidth: true,
+			// FullWidth: true,
 		}) {
 			Create Task
 		}
 	}
-	@modal.Modal(modal.Props{
-		ID:    "create-task",
-		Class: "max-w-2xl",
+	@dialog.Content(dialog.ContentProps{
+		ID:    dialogId,
+		Class: "min-w-3/4 max-w-2xl",
 	}) {
 		<form hx-post="/submit/task" hx-swap="none">
-			@modal.Header() {
-				Create Task
+			@dialog.Header() {
+				@dialog.Title() {
+					Create Task
+				}
 			}
-			@modal.Body(modal.BodyProps{
-				Class: "flex flex-col gap-4",
-			}) {
-				<div class="flex flex-col gap-2">
-					@label.Label(label.Props{
-						Class: "text-lg font-semibold",
-					}) {
-						Profile
-					}
-					@elements.ProfileSelector(profiles)
-				</div>
-				<div class="flex flex-col gap-2">
-					@label.Label(label.Props{
-						Class: "text-lg font-semibold",
-					}) {
-						File
-					}
-					@elements.FilePicker("./media", "name_asc", queue)
-				</div>
-			}
-			@modal.Footer(modal.FooterProps{
+			<div class="flex flex-col gap-2">
+				@label.Label(label.Props{
+					Class: "text-lg font-semibold",
+				}) {
+					Profile
+				}
+				@elements.ProfileSelector(profiles)
+			</div>
+			<div class="flex flex-col gap-2">
+				@label.Label(label.Props{
+					Class: "text-lg font-semibold",
+				}) {
+					File
+				}
+				@elements.FilePicker("./media", "name_asc", queue)
+			</div>
+			@dialog.Footer(dialog.FooterProps{
 				Class: "flex flex-row-reverse",
 			}) {
 				<div class="flex gap-4">
-					@modal.Close(modal.CloseProps{
-						ModalID: "create-task",
+					@dialog.Close(dialog.CloseProps{
+						ID: "create-task",
 					}) {
 						@button.Button(button.Props{
 							Variant: button.VariantSecondary,
@@ -71,8 +71,8 @@ templ createTaskModalButton(profiles []transcoding.Profile, queue []elements.Tas
 							Cancel
 						}
 					}
-					@modal.Close(modal.CloseProps{
-						ModalID: "create-task",
+					@dialog.Close(dialog.CloseProps{
+						For: dialogId,
 					}) {
 						@button.Button(button.Props{
 							Type: "submit",

@@ -1,10 +1,10 @@
 package elements
 
 import (
-	"github.com/axzilla/templui/component/button"
-	"github.com/axzilla/templui/component/input"
-	"github.com/axzilla/templui/icon"
 	"github.com/dustin/go-humanize"
+	"github.com/royalcat/easy-transcoder/templui/components/button"
+	"github.com/royalcat/easy-transcoder/templui/components/icon"
+	"github.com/royalcat/easy-transcoder/templui/components/input"
 	"net/url"
 	"os"
 	"path"
@@ -59,12 +59,14 @@ templ FilePicker(p string, sortOption string, queue []TaskState) {
 		<div class="flex flex-col gap-4">
 			<div class="flex flex-row gap-2">
 				@button.Button(button.Props{
-					Size:     button.SizeIcon,
-					Variant:  button.VariantGhost,
-					Class:    "flex",
-					HxGet:    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)) + "&sort=" + url.QueryEscape(sortOption),
-					HxTarget: "#filepicker",
-					HxSwap:   "outerHTML",
+					Size:    button.SizeIcon,
+					Variant: button.VariantGhost,
+					Class:   "flex",
+					Attributes: templ.Attributes{
+						"hx-get":    "/elements/filepicker?path=" + url.QueryEscape(path.Dir(p)) + "&sort=" + url.QueryEscape(sortOption),
+						"hx-target": "#filepicker",
+						"hx-swap":   "outerHTML",
+					},
 				}) {
 					@icon.ArrowLeft()
 				}
@@ -173,10 +175,12 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 				}
 			}}
 			@button.Button(button.Props{
-				Variant:  nameAscVariant,
-				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=name_asc",
-				HxTarget: "#filepicker",
-				HxSwap:   "outerHTML",
+				Variant: nameAscVariant,
+				Attributes: templ.Attributes{
+					"hx-get":    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=name_asc",
+					"hx-target": "#filepicker",
+					"hx-swap":   "outerHTML",
+				},
 			}) {
 				Name ↑
 			}
@@ -187,10 +191,12 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 				}
 			}}
 			@button.Button(button.Props{
-				Variant:  nameDescVariant,
-				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=name_desc",
-				HxTarget: "#filepicker",
-				HxSwap:   "outerHTML",
+				Variant: nameDescVariant,
+				Attributes: templ.Attributes{
+					"hx-get":    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=name_desc",
+					"hx-target": "#filepicker",
+					"hx-swap":   "outerHTML",
+				},
 			}) {
 				Name ↓
 			}
@@ -201,10 +207,12 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 					}
 			}}
 			@button.Button(button.Props{
-				Variant:  sizeAscVariant,
-				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=size_asc",
-				HxTarget: "#filepicker",
-				HxSwap:   "outerHTML",
+				Variant: sizeAscVariant,
+				Attributes: templ.Attributes{
+					"hx-get":    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=size_asc",
+					"hx-target": "#filepicker",
+					"hx-swap":   "outerHTML",
+				},
 			}) {
 				Size ↑
 			}
@@ -215,10 +223,12 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 			}
 			}}
 			@button.Button(button.Props{
-				Variant:  sizeDescVariant,
-				HxGet:    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=size_desc",
-				HxTarget: "#filepicker",
-				HxSwap:   "outerHTML",
+				Variant: sizeDescVariant,
+				Attributes: templ.Attributes{
+					"hx-get":    "/elements/filepicker?path=" + url.QueryEscape(p) + "&sort=size_desc",
+					"hx-target": "#filepicker",
+					"hx-swap":   "outerHTML",
+				},
 			}) {
 				Size ↓
 			}
