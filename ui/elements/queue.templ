@@ -9,6 +9,7 @@ import (
 	"github.com/royalcat/easy-transcoder/templui/components/label"
 	"github.com/royalcat/easy-transcoder/templui/components/progress"
 	"github.com/royalcat/easy-transcoder/templui/components/tooltip"
+	"slices"
 )
 
 // TaskState represents the UI state of a task
@@ -32,11 +33,76 @@ type TaskState struct {
 }
 
 templ Queue(tasks []TaskState) {
-	<div id="queue-grid" class="flex flex-row flex-wrap gap-6 w-full">
+	{{
+		waitingTasks := []TaskState{}
+		queuedTasks := []TaskState{}
+		completedTasks := []TaskState{}
+		otherTasks := []TaskState{}
 		for _, task := range tasks {
-			@taskCard(task)
+			switch task.Status {
+			case processor.TaskStatusWaitingForResolution, processor.TaskStatusReplacing:
+				waitingTasks = append(waitingTasks, task)
+			case processor.TaskStatusPending, processor.TaskStatusProcessing:
+				queuedTasks = append(queuedTasks, task)
+			case processor.TaskStatusCompleted, processor.TaskStatusCancelled, processor.TaskStatusFailed:
+				completedTasks = append(completedTasks, task)
+			default:
+				otherTasks = append(otherTasks, task)
+			}
 		}
-	</div>
+
+		slices.Reverse(waitingTasks)
+		slices.Reverse(queuedTasks)
+	}}
+	if len(otherTasks) != 0 {
+		// This should not normally happen
+		@label.Label(label.Props{
+			Class: "text-2xl font-bold mb-4",
+		}) {
+			Unknown status tasks (please report)
+		}
+		<div id="queue-grid" class="flex flex-row flex-wrap gap-6 w-full">
+			for _, task := range otherTasks {
+				@taskCard(task)
+			}
+		</div>
+	}
+	if len(waitingTasks) != 0 {
+		@label.Label(label.Props{
+			Class: "text-2xl font-bold mb-4",
+		}) {
+			Waiting for resolution
+		}
+		<div id="queue-grid" class="flex flex-row flex-wrap gap-6 w-full">
+			for _, task := range waitingTasks {
+				@taskCard(task)
+			}
+		</div>
+	}
+	if len(queuedTasks) != 0 {
+		@label.Label(label.Props{
+			Class: "text-2xl font-bold my-4",
+		}) {
+			Queue
+		}
+		<div id="queue-grid" class="flex flex-row flex-wrap gap-6 w-full">
+			for _, task := range queuedTasks {
+				@taskCard(task)
+			}
+		</div>
+	}
+	if len(completedTasks) != 0 {
+		@label.Label(label.Props{
+			Class: "text-2xl font-bold my-4",
+		}) {
+			Completed
+		}
+		<div id="queue-grid" class="flex flex-row flex-wrap gap-6 w-full">
+			for _, task := range completedTasks {
+				@taskCard(task)
+			}
+		</div>
+	}
 }
 
 templ taskCard(task TaskState) {
