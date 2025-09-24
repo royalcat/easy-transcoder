@@ -49,6 +49,15 @@ func (c *Config) GetLogLevel() slog.Level {
 	}
 }
 
+func (c *Config) GetProfile(name string) *transcoding.Profile {
+	for _, profile := range c.Profiles {
+		if profile.Name == name {
+			return &profile
+		}
+	}
+	return nil
+}
+
 // ParseConfig loads configuration from a file and environment variables
 func ParseConfig(p string) (Config, error) {
 	var k = koanf.NewWithConf(koanf.Conf{

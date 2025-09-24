@@ -58,29 +58,33 @@ templ createTaskModalButton(profiles []transcoding.Profile, queue []elements.Tas
 				@elements.FilePicker("./media", "name_asc", queue)
 			</div>
 			@dialog.Footer(dialog.FooterProps{
-				Class: "flex flex-row-reverse",
+				// Class: "flex flex-row-reverse gap-4 justify-between",
 			}) {
-				<div class="flex gap-4">
-					@dialog.Close(dialog.CloseProps{
-						ID: "create-task",
+				@dialog.Close(dialog.CloseProps{
+					For: dialogId,
+				}) {
+					@button.Button(button.Props{
+						Type:    "submit",
+						Variant: button.VariantSecondary,
+						Attributes: templ.Attributes{
+							"formaction": "/submit/task-batch",
+						},
 					}) {
-						@button.Button(button.Props{
-							Variant: button.VariantSecondary,
-							Type:    "button",
-						}) {
-							Cancel
-						}
+						Submit Directory as Batch
 					}
-					@dialog.Close(dialog.CloseProps{
-						For: dialogId,
+				}
+				@dialog.Close(dialog.CloseProps{
+					For: dialogId,
+				}) {
+					@button.Button(button.Props{
+						Type: "submit",
+						Attributes: templ.Attributes{
+							"formaction": "/submit/task",
+						},
 					}) {
-						@button.Button(button.Props{
-							Type: "submit",
-						}) {
-							Submit
-						}
+						Submit
 					}
-				</div>
+				}
 			}
 		</form>
 	}

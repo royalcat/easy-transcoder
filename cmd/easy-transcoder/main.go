@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
@@ -78,6 +79,7 @@ func main() {
 	mux.Handle("GET /metrics/ssim", http.HandlerFunc(s.getSSIM))
 
 	mux.Handle("POST /submit/task", http.HandlerFunc(s.submitTask))
+	mux.Handle("POST /submit/task-batch", http.HandlerFunc(s.submitTaskBatch))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
 	mux.Handle("POST /submit/cancel", http.HandlerFunc(s.submitTaskCancellation))
 
@@ -431,6 +433,59 @@ func (s *server) submitTask(w http.ResponseWriter, r *http.Request) {
 	s.logger.Info("task submission", "filepath", filepath, "profile", profileName)
 
 	s.Queue.AddTask(filepath, profileName)
+}
+
+func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
+	log := s.logger.With("handler", "submitBatchTask")
+
+	err := r.ParseForm()
+	if err != nil {
+		log.Error("parse form error", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	dir := r.FormValue("filepath")
+	profileName := r.FormValue("profile")
+
+	profile := s.Config.GetProfile(profileName)
+	if profile == nil {
+		log.Error("invalid profile", "profile", profileName)
+		http.Error(w, "Invalid profile: "+profileName, http.StatusBadRequest)
+		return
+	}
+
+	go func() {
+		log.Info("processing batch task submission", "dir", dir, "profile", profileName)
+		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				log.Error("error accessing path", "path", path, "error", err)
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+
+			if profile.BatchExcludeFilter != nil {
+				matches, err := profile.BatchExcludeFilter.Matches(path)
+				if err != nil {
+					log.Error("error applying filter", "file", path, "error", err)
+					return err
+				}
+				if matches {
+					log.Info("skipping file due to filter", "file", path)
+					return nil
+				}
+			}
+
+			log.Info("adding file to queue", "file", path, "profile", profileName)
+			s.Queue.AddTask(path, profileName)
+			return nil
+		})
+		if err != nil {
+			log.Error("error walking directory", "dir", dir, "error", err)
+		}
+	}()
 }
 
 func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {

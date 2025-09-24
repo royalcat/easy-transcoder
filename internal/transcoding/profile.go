@@ -8,8 +8,11 @@ import (
 
 // an ffmpeg transcoding profile
 type Profile struct {
-	Name   string            `koanf:"name"`
+	Name string `koanf:"name"`
+
 	Params map[string]string `koanf:"params"`
+
+	BatchExcludeFilter *CodecFilter `koanf:"batch_exclude_filter"`
 }
 
 func (p *Profile) Compile(input, output, progressSock string) *exec.Cmd {
