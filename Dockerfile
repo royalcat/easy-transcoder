@@ -10,6 +10,7 @@ COPY ./cmd ./cmd
 COPY ./assets ./assets
 COPY ./internal ./internal
 COPY ./ui ./ui
+COPY ./templui ./templui
 
 # Build with cache
 RUN --mount=type=cache,mode=0777,target=/go/pkg/mod \

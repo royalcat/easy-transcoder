@@ -22,3 +22,6 @@ dev-server:
 		--build.include_ext "templ" \
 		--build.stop_on_error "false" \
 		--misc.clean_on_exit true
+
+docker-build: generate
+	docker build --platform linux/amd64,linux/arm64 .
