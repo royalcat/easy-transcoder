@@ -3,6 +3,7 @@ package processor
 import (
 	"log/slog"
 	"os"
+	"sync"
 	"sync/atomic"
 	"syscall"
 
@@ -12,12 +13,13 @@ import (
 
 // Processor manages a queue of transcoding tasks.
 type Processor struct {
-	config config.Config
+	taskAI  atomic.Uint64
+	queue   chan *task
+	tasksMu sync.RWMutex
+	tasks   map[uint64]*task
 
-	taskAI atomic.Uint64
-	queue  chan *task
-	tasks  map[uint64]*task
 	logger *slog.Logger
+	config config.Config
 }
 
 // NewProcessor creates a new task processor.
@@ -45,8 +47,23 @@ func (q *Processor) StartWorker() {
 	}()
 }
 
+func (q *Processor) HasTask(path, preset string) bool {
+	q.tasksMu.RLock()
+	defer q.tasksMu.RUnlock()
+
+	for _, t := range q.tasks {
+		if t.Input == path && t.Preset == preset && !t.cancelled.Load() {
+			return true
+		}
+	}
+	return false
+}
+
 // AddTask creates and enqueues a new transcoding task.
 func (q *Processor) AddTask(path, preset string) {
+	q.tasksMu.Lock()
+	defer q.tasksMu.Unlock()
+
 	id := q.taskAI.Add(1)
 	task := newTask(id, path, preset)
 	q.tasks[task.ID] = task

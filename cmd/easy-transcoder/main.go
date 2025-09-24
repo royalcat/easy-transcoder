@@ -478,6 +478,11 @@ func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			if s.Queue.HasTask(path, profileName) {
+				log.Info("skipping file, task already exists", "file", path, "profile", profileName)
+				return nil
+			}
+
 			log.Info("adding file to queue", "file", path, "profile", profileName)
 			s.Queue.AddTask(path, profileName)
 			return nil
