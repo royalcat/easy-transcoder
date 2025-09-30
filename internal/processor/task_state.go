@@ -7,14 +7,14 @@ import (
 )
 
 // GetTask retrieves a task by ID.
-func (q *Processor) GetTask(id uint64) TaskState {
-	return q.tasks[id].State()
+func (p *Processor) GetTask(id uint64) TaskState {
+	return p.tasks[id].State()
 }
 
 // GetTask retrieves a task by ID.
-func (q *Processor) GetQueue() []TaskState {
+func (p *Processor) GetQueue() []TaskState {
 	var tasks []TaskState
-	for _, t := range q.tasks {
+	for _, t := range p.tasks {
 		tasks = append(tasks, t.State())
 	}
 

@@ -10,12 +10,12 @@ import (
 )
 
 // ResolveTask handles the final resolution of a completed task.
-func (q *Processor) ResolveTask(ctx context.Context, taskID uint64, replace bool) {
-	log := q.logger.With("task_id", taskID, "replace", replace)
+func (p *Processor) ResolveTask(ctx context.Context, taskID uint64, replace bool) {
+	log := p.logger.With("task_id", taskID, "replace", replace)
 
 	log.Info("resolving task")
 
-	task := q.tasks[taskID]
+	task := p.tasks[taskID]
 
 	if task.Status != TaskStatusWaitingForResolution {
 		log.Error("task is not in a resolvable state", "status", task.Status)
@@ -26,13 +26,13 @@ func (q *Processor) ResolveTask(ctx context.Context, taskID uint64, replace bool
 
 	go func() {
 		// Perform the actual resolution
-		err := q.resolveTask(task, replace)
+		err := p.resolveTask(task, replace)
 
 		if err != nil {
 			log.Error("task resolution failed", "error", err)
 			task.MarkFailed(err)
 		} else {
-			q.logger.Info("task resolved successfully")
+			p.logger.Info("task resolved successfully")
 			task.MarkCompleted()
 		}
 	}()
@@ -41,8 +41,8 @@ func (q *Processor) ResolveTask(ctx context.Context, taskID uint64, replace bool
 
 // resolveTask completes a task that's waiting for resolution by either
 // keeping the original file or replacing it with the transcoded version.
-func (q *Processor) resolveTask(task *task, replace bool) error {
-	log := q.logger.With("task_id", task.ID, "replace", replace, "temp_file", task.TempFile, "input_file", task.Input)
+func (p *Processor) resolveTask(task *task, replace bool) error {
+	log := p.logger.With("task_id", task.ID, "replace", replace, "temp_file", task.TempFile, "input_file", task.Input)
 
 	if !replace {
 		// If not replacing, just clean up temp file
@@ -65,7 +65,7 @@ func (q *Processor) resolveTask(task *task, replace bool) error {
 	// Replace the original file with the transcoded version
 	log.Info("replacing original file with transcoded version")
 
-	err := q.replaceFile(task.TempFile, task.Input)
+	err := p.replaceFile(task.TempFile, task.Input)
 	if err != nil {
 		log.Error("file replacement failed", "error", err)
 		return err
@@ -90,8 +90,8 @@ func (q *Processor) resolveTask(task *task, replace bool) error {
 
 // replaceFile replaces the destination file with the contents of the source file.
 // Uses a safer approach with a single temporary file in the same directory as the destination.
-func (q *Processor) replaceFile(src, dst string) error {
-	log := q.logger.With("src", src, "dst", dst)
+func (p *Processor) replaceFile(src, dst string) error {
+	log := p.logger.With("src", src, "dst", dst)
 
 	log.Debug("replacing file")
 
@@ -172,7 +172,7 @@ func (q *Processor) replaceFile(src, dst string) error {
 		return err
 	}
 
-	q.logger.Debug("file copied successfully", "bytes", bytesWritten)
-	q.logger.Info("file replaced successfully", "dst", dst)
+	p.logger.Debug("file copied successfully", "bytes", bytesWritten)
+	p.logger.Info("file replaced successfully", "dst", dst)
 	return nil
 }

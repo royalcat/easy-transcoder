@@ -16,7 +16,7 @@ import (
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-func TaskCreation(profiles []transcoding.Profile, queue []elements.TaskState) templ.Component {
+func TaskCreation(ffmpegBinary string, profiles []transcoding.Profile, queue []elements.TaskState) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -111,7 +111,7 @@ func TaskCreation(profiles []transcoding.Profile, queue []elements.TaskState) te
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layouts.BaseLayout().Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layouts.BaseLayout(ffmpegBinary).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

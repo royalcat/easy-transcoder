@@ -1,40 +1,12 @@
 package modules
 
-import (
-	"os/exec"
-	"regexp"
-	"strings"
-)
-
-func getFFmpegVersion() string {
-	cmd := exec.Command("ffmpeg", "-version")
-	output, err := cmd.Output()
-	if err != nil {
-		return "FFmpeg: unavailable"
-	}
-
-	// Extract version from the first line
-	firstLine := strings.Split(string(output), "\n")[0]
-
-	// Use regex to extract the version number
-	re := regexp.MustCompile(`ffmpeg version\s+([\w\d\.-]+)`)
-	matches := re.FindStringSubmatch(firstLine)
-
-	if len(matches) >= 2 {
-		return "FFmpeg: v" + matches[1]
-	}
-
-	return "FFmpeg installed"
-}
+import "github.com/royalcat/easy-transcoder/ui/elements"
 
 templ Navbar() {
 	<nav class="border-b py-3">
 		<div class="flex justify-between items-center mx-16">
 			<div class="flex items-center space-x-4">
-				<div class="text-sm text-gray-600 dark:text-gray-400 font-mono">
-					{ getFFmpegVersion() }
-				</div>
-				@CPUMonitor()
+				@elements.Status("")
 			</div>
 			<div>
 				@ThemeSwitcher()

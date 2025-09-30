@@ -11,8 +11,8 @@ import (
 )
 
 // only this function can modify not atomic task status
-func (q *Processor) processTask(task *task) {
-	log := q.logger.With("task_id", task.ID, "input", task.Input, "preset", task.Preset)
+func (p *Processor) processTask(task *task) {
+	log := p.logger.With("task_id", task.ID, "input", task.Input, "preset", task.Preset)
 
 	if task.cancelled.Load() {
 		log.Info("transcoding was cancelled")
@@ -39,7 +39,7 @@ func (q *Processor) processTask(task *task) {
 	}
 	log.Debug("media duration detected", "duration", totalDuration)
 
-	preset := q.getProfile(task.Preset)
+	preset := p.getProfile(task.Preset)
 	if preset.Name == "" {
 		log.Error("invalid preset")
 		task.MarkFailed(fmt.Errorf("invalid preset: %s", task.Preset))
@@ -47,7 +47,7 @@ func (q *Processor) processTask(task *task) {
 	}
 
 	// Create temporary output file
-	task.TempFile, err = q.tempFile(task.Input)
+	task.TempFile, err = p.tempFile(task.Input)
 	if err != nil {
 		log.Error("failed to create temp file", "task_id", task.ID, "error", err)
 		task.MarkFailed(fmt.Errorf("failed to create temp file: %s", err))
@@ -61,11 +61,11 @@ func (q *Processor) processTask(task *task) {
 		task.SetProgress(prg)
 	}
 
-	progressSock := q.ffmpegProgressSock(totalDuration, progressCallback, task.ID)
+	progressSock := p.ffmpegProgressSock(totalDuration, progressCallback, task.ID)
 	defer os.Remove(progressSock)
 
 	// Prepare and run the command
-	cmd := preset.Compile(q.ffmpegPath(), task.Input, task.TempFile, progressSock)
+	cmd := preset.Compile(p.ffmpegBinary(), task.Input, task.TempFile, progressSock)
 	task.SetCommand(cmd)
 
 	cmd.Stderr = &task.stderr
@@ -79,8 +79,8 @@ func (q *Processor) processTask(task *task) {
 		return
 	}
 
-	if q.config.TranscodingNiceness != 0 {
-		err = syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, q.config.TranscodingNiceness)
+	if p.config.TranscodingNiceness != 0 {
+		err = syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, p.config.TranscodingNiceness)
 		if err != nil {
 			log.Warn("failed to set process priority", "error", err)
 		}
@@ -106,16 +106,16 @@ func (q *Processor) processTask(task *task) {
 }
 
 // tempFile creates a temporary file path for transcoding output.
-func (q *Processor) tempFile(filename string) (string, error) {
-	tempDir := q.config.TempDir
+func (p *Processor) tempFile(filename string) (string, error) {
+	tempDir := p.config.TempDir
 	if tempDir == "" {
 		tempDir = path.Join(os.TempDir(), "easy-transcoder")
 	}
-	q.logger.Debug("creating temp directory", "dir", tempDir)
+	p.logger.Debug("creating temp directory", "dir", tempDir)
 
 	err := os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
-		q.logger.Error("failed to create temp directory",
+		p.logger.Error("failed to create temp directory",
 			"dir", tempDir,
 			"error", err)
 		return "", err
@@ -123,13 +123,13 @@ func (q *Processor) tempFile(filename string) (string, error) {
 
 	tempDir, err = os.MkdirTemp(tempDir, "")
 	if err != nil {
-		q.logger.Error("failed to create temp subdirectory",
+		p.logger.Error("failed to create temp subdirectory",
 			"parent_dir", tempDir,
 			"error", err)
 		return "", err
 	}
 
 	tempFilePath := path.Join(tempDir, path.Base(filename))
-	q.logger.Debug("created temp file path", "path", tempFilePath)
+	p.logger.Debug("created temp file path", "path", tempFilePath)
 	return tempFilePath, nil
 }

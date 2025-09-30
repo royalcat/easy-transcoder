@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-templ Resolver(task elements.TaskState) {
-	@layouts.BaseLayout() {
+templ Resolver(ffmpegBinary string, task elements.TaskState) {
+	@layouts.BaseLayout(ffmpegBinary) {
 		<div class="flex flex-col gap-10">
 			@resolveMenu(task.ID, task.InputFile, task.TempFile)
 		</div>

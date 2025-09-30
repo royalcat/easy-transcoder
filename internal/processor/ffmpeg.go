@@ -12,13 +12,13 @@ import (
 	"strings"
 )
 
-func (q *Processor) ffmpegProgressSock(totalDuration float64, progressCallback func(float64), taskID uint64) string {
+func (p *Processor) ffmpegProgressSock(totalDuration float64, progressCallback func(float64), taskID uint64) string {
 	sockFileName := path.Join(os.TempDir(), fmt.Sprintf("%d_sock", rand.Int()))
-	q.logger.Debug("creating progress socket", "task_id", taskID, "socket", sockFileName)
+	p.logger.Debug("creating progress socket", "task_id", taskID, "socket", sockFileName)
 
 	l, err := net.Listen("unix", sockFileName)
 	if err != nil {
-		q.logger.Error("failed to create progress socket", "task_id", taskID, "error", err)
+		p.logger.Error("failed to create progress socket", "task_id", taskID, "error", err)
 		panic(err)
 	}
 
@@ -26,7 +26,7 @@ func (q *Processor) ffmpegProgressSock(totalDuration float64, progressCallback f
 		re := regexp.MustCompile(`out_time_ms=(\d+)`)
 		fd, err := l.Accept()
 		if err != nil {
-			q.logger.Error("socket accept error", "task_id", taskID, "error", err)
+			p.logger.Error("socket accept error", "task_id", taskID, "error", err)
 			return
 		}
 
@@ -35,7 +35,7 @@ func (q *Processor) ffmpegProgressSock(totalDuration float64, progressCallback f
 		for {
 			_, err := fd.Read(buf)
 			if err != nil {
-				q.logger.Debug("socket read ended", "task_id", taskID, "error", err)
+				p.logger.Debug("socket read ended", "task_id", taskID, "error", err)
 				return
 			}
 
@@ -48,7 +48,7 @@ func (q *Processor) ffmpegProgressSock(totalDuration float64, progressCallback f
 			}
 
 			if strings.Contains(data, "progress=end") {
-				q.logger.Debug("ffmpeg reported progress=end", "task_id", taskID)
+				p.logger.Debug("ffmpeg reported progress=end", "task_id", taskID)
 				prog = 1
 			}
 

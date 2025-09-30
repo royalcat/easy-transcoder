@@ -9,8 +9,8 @@ import (
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-templ Root(profiles []transcoding.Profile, queue []elements.TaskState) {
-	@layouts.BaseLayout() {
+templ Root(ffmpegBinary string, profiles []transcoding.Profile, queue []elements.TaskState) {
+	@layouts.BaseLayout(ffmpegBinary) {
 		<div class="flex flex-col gap-10">
 			@createTaskModalButton(profiles, queue)
 			<div id="queue" hx-get="/elements/queue" hx-trigger="load, every 2s"></div>

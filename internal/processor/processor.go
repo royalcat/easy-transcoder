@@ -19,7 +19,8 @@ type Processor struct {
 	tasksMu sync.RWMutex
 	tasks   map[uint64]*task
 
-	ffmpegPath func() string
+	ffmpegReady  bool
+	ffmpegBinary func() string
 
 	logger *slog.Logger
 	config config.Config
@@ -33,7 +34,17 @@ func NewProcessor(config config.Config, logger *slog.Logger) *Processor {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 
-	ffmpegPath := sync.OnceValue(func() string {
+	processor := &Processor{
+		config: config,
+		queue:  make(chan *task, 100),
+		tasks:  map[uint64]*task{},
+		logger: logger,
+	}
+
+	processor.ffmpegBinary = sync.OnceValue(func() string {
+		defer func() {
+			processor.ffmpegReady = true
+		}()
 		log := logger.With("component", "setup-custom-ffmpeg", "url", config.CustomFFmpegURL)
 		if config.CustomFFmpegURL == "" {
 			return defaultFFmpegPath
@@ -52,33 +63,34 @@ func NewProcessor(config config.Config, logger *slog.Logger) *Processor {
 			return defaultFFmpegPath
 		}
 	})
-	go ffmpegPath()
+	go processor.ffmpegBinary()
 
-	return &Processor{
-		config:     config,
-		queue:      make(chan *task, 100),
-		tasks:      map[uint64]*task{},
-		ffmpegPath: ffmpegPath,
-		logger:     logger,
+	return processor
+}
+
+func (p *Processor) FFmpegBinary() string {
+	if !p.ffmpegReady {
+		return ""
 	}
+	return p.ffmpegBinary()
 }
 
 // StartWorker begins a background worker that processes pending tasks.
-func (q *Processor) StartWorker() {
-	q.logger.Info("starting task processor worker")
+func (p *Processor) StartWorker() {
+	p.logger.Info("starting task processor worker")
 
 	go func() {
-		for task := range q.queue {
-			q.processTask(task)
+		for task := range p.queue {
+			p.processTask(task)
 		}
 	}()
 }
 
-func (q *Processor) HasTask(path, preset string) bool {
-	q.tasksMu.RLock()
-	defer q.tasksMu.RUnlock()
+func (p *Processor) HasTask(path, preset string) bool {
+	p.tasksMu.RLock()
+	defer p.tasksMu.RUnlock()
 
-	for _, t := range q.tasks {
+	for _, t := range p.tasks {
 		if t.Input == path && t.Preset == preset && !t.cancelled.Load() {
 			return true
 		}
@@ -87,38 +99,38 @@ func (q *Processor) HasTask(path, preset string) bool {
 }
 
 // AddTask creates and enqueues a new transcoding task.
-func (q *Processor) AddTask(path, preset string) {
-	q.tasksMu.Lock()
-	defer q.tasksMu.Unlock()
+func (p *Processor) AddTask(path, preset string) {
+	p.tasksMu.Lock()
+	defer p.tasksMu.Unlock()
 
-	id := q.taskAI.Add(1)
+	id := p.taskAI.Add(1)
 	task := newTask(id, path, preset)
-	q.tasks[task.ID] = task
-	q.logger.Info("task added to queue",
+	p.tasks[task.ID] = task
+	p.logger.Info("task added to queue",
 		"task_id", task.ID,
 		"input", task.Input,
 		"preset", task.Preset)
-	q.queue <- task
+	p.queue <- task
 }
 
 // CancelTask attempts to cancel a task by ID.
-func (q *Processor) CancelTask(id uint64) error {
-	q.logger.Info("cancelling task", "task_id", id)
-	q.tasks[id].cancelled.Store(true)
-	if q.tasks[id].cmd != nil {
-		q.tasks[id].cmd.Process.Signal(syscall.SIGTERM)
+func (p *Processor) CancelTask(id uint64) error {
+	p.logger.Info("cancelling task", "task_id", id)
+	p.tasks[id].cancelled.Store(true)
+	if p.tasks[id].cmd != nil {
+		p.tasks[id].cmd.Process.Signal(syscall.SIGTERM)
 	}
 
 	return nil // Task not found
 }
 
 // getProfile retrieves a transcoding profile by name.
-func (q *Processor) getProfile(name string) transcoding.Profile {
-	for _, p := range q.config.Profiles {
+func (p *Processor) getProfile(name string) transcoding.Profile {
+	for _, p := range p.config.Profiles {
 		if p.Name == name {
 			return p
 		}
 	}
-	q.logger.Warn("profile not found", "profile_name", name)
+	p.logger.Warn("profile not found", "profile_name", name)
 	return transcoding.Profile{}
 }

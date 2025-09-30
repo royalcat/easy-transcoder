@@ -19,7 +19,6 @@ import (
 	"github.com/royalcat/easy-transcoder/internal/processor"
 	"github.com/royalcat/easy-transcoder/internal/transcoding"
 	"github.com/royalcat/easy-transcoder/ui/elements"
-	"github.com/royalcat/easy-transcoder/ui/modules"
 	"github.com/royalcat/easy-transcoder/ui/pages"
 )
 
@@ -42,9 +41,9 @@ func main() {
 	q.StartWorker()
 
 	s := &server{
-		Config: cfg,
-		Queue:  q,
-		logger: logger,
+		Config:    cfg,
+		Processor: q,
+		logger:    logger,
 	}
 
 	templHandler := func(c templ.Component) http.Handler {
@@ -65,14 +64,14 @@ func main() {
 
 	assetsRoutes(mux)
 
-	mux.Handle("GET /", templHandler(pages.Root(cfg.Profiles, s.queue())))
+	mux.Handle("GET /", templHandler(pages.Root(q.FFmpegBinary(), cfg.Profiles, s.queue())))
 	mux.Handle("GET /resolver", http.HandlerFunc(s.pageResolver))
-	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(cfg.Profiles, s.queue())))
+	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(q.FFmpegBinary(), cfg.Profiles, s.queue())))
 
 	mux.Handle("GET /elements/filepicker", http.HandlerFunc(s.getfilebrowser))
 	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(s.getfileinfo))
 	mux.Handle("GET /elements/queue", http.HandlerFunc(s.getqueue))
-	mux.Handle("GET /elements/cpumonitor", http.HandlerFunc(s.getcpumonitor))
+	mux.Handle("GET /elements/status", http.HandlerFunc(s.getstatus))
 
 	// Replaced the single VMAF endpoint with three separate metric endpoints
 	mux.Handle("GET /metrics/vmaf", http.HandlerFunc(s.getVMAF))
@@ -161,9 +160,9 @@ func (rw *responseWriter) WriteHeader(code int) {
 }
 
 type server struct {
-	Config config.Config
-	Queue  *processor.Processor
-	logger *slog.Logger
+	Config    config.Config
+	Processor *processor.Processor
+	logger    *slog.Logger
 }
 
 func (s *server) getfilebrowser(w http.ResponseWriter, r *http.Request) {
@@ -198,8 +197,8 @@ func (s *server) getfileinfo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *server) getcpumonitor(w http.ResponseWriter, r *http.Request) {
-	err := modules.CPUMonitor().Render(r.Context(), w)
+func (s *server) getstatus(w http.ResponseWriter, r *http.Request) {
+	err := elements.Status(s.Processor.FFmpegBinary()).Render(r.Context(), w)
 	if err != nil {
 		s.logger.Error("cpu monitor render error", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -209,7 +208,7 @@ func (s *server) getcpumonitor(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) queue() []elements.TaskState {
 	queue := []elements.TaskState{}
-	for _, task := range s.Queue.GetQueue() {
+	for _, task := range s.Processor.GetQueue() {
 		queue = append(queue, mapTaskState(task))
 	}
 	return queue
@@ -403,7 +402,7 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 	taskState := elements.TaskState{}
 
 	// Retrieve the task and populate TaskState with rich information
-	for _, task := range s.Queue.GetQueue() {
+	for _, task := range s.Processor.GetQueue() {
 		if task.ID == uint64(taskId) {
 			taskState = mapTaskState(task)
 			break
@@ -412,7 +411,7 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Info("task resolver", "task_id", taskId, "status", taskState.Status)
 
-	err = pages.Resolver(taskState).Render(r.Context(), w)
+	err = pages.Resolver(s.Processor.FFmpegBinary(), taskState).Render(r.Context(), w)
 	if err != nil {
 		s.logger.Error("resolver render error", "task_id", taskId, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -433,7 +432,7 @@ func (s *server) submitTask(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Info("task submission", "filepath", filepath, "profile", profileName)
 
-	s.Queue.AddTask(filepath, profileName)
+	s.Processor.AddTask(filepath, profileName)
 }
 
 func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
@@ -486,13 +485,13 @@ func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			if s.Queue.HasTask(path, profileName) {
+			if s.Processor.HasTask(path, profileName) {
 				log.Info("skipping file, task already exists", "file", path, "profile", profileName)
 				continue
 			}
 
 			log.Info("adding file to queue", "file", path, "profile", profileName)
-			s.Queue.AddTask(path, profileName)
+			s.Processor.AddTask(path, profileName)
 		}
 	}()
 }
@@ -525,7 +524,7 @@ func (s *server) submitTaskResolution(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Info("resolving task", "task_id", taskID, "replace", replace)
 
-	s.Queue.ResolveTask(ctx, uint64(taskID), replace)
+	s.Processor.ResolveTask(ctx, uint64(taskID), replace)
 
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
@@ -549,7 +548,7 @@ func (s *server) submitTaskCancellation(w http.ResponseWriter, r *http.Request) 
 
 	s.logger.Info("cancelling task", "task_id", taskId)
 
-	err = s.Queue.CancelTask(uint64(taskId))
+	err = s.Processor.CancelTask(uint64(taskId))
 	if err != nil {
 		s.logger.Error("task cancellation failed", "task_id", taskId, "error", err)
 		http.Error(w, "Failed to cancel task: "+err.Error(), http.StatusInternalServerError)
