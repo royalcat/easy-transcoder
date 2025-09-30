@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -457,38 +458,42 @@ func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		log.Info("processing batch task submission", "dir", dir, "profile", profileName)
-		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				log.Error("error accessing path", "path", path, "error", err)
-				return err
-			}
-			if d.IsDir() {
-				return nil
+
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			log.Error("failed to read directory", "dir", dir, "error", err)
+			return
+		}
+
+		for _, entry := range entries {
+			path := filepath.Join(dir, entry.Name())
+
+			ext := strings.ToLower(filepath.Ext(path))
+
+			if slices.Contains(transcoding.VideoExtensions, ext) {
+				log.Info("skipping file due to extension", "file", path)
+				continue
 			}
 
 			if profile.BatchExcludeFilter != nil {
 				matches, err := profile.BatchExcludeFilter.Matches(path)
 				if err != nil {
 					log.Error("error applying filter", "file", path, "error", err)
-					return err
+					return
 				}
 				if matches {
 					log.Info("skipping file due to filter", "file", path)
-					return nil
+					continue
 				}
 			}
 
 			if s.Queue.HasTask(path, profileName) {
 				log.Info("skipping file, task already exists", "file", path, "profile", profileName)
-				return nil
+				continue
 			}
 
 			log.Info("adding file to queue", "file", path, "profile", profileName)
 			s.Queue.AddTask(path, profileName)
-			return nil
-		})
-		if err != nil {
-			log.Error("error walking directory", "dir", dir, "error", err)
 		}
 	}()
 }

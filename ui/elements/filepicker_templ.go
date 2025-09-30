@@ -10,6 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"github.com/dustin/go-humanize"
+	"github.com/royalcat/easy-transcoder/internal/transcoding"
 	"github.com/royalcat/easy-transcoder/templui/components/button"
 	"github.com/royalcat/easy-transcoder/templui/components/icon"
 	"github.com/royalcat/easy-transcoder/templui/components/input"
@@ -22,12 +23,8 @@ import (
 
 // isVideoFile checks if a file has a video extension
 func isVideoFile(name string) bool {
-	videoExtensions := []string{
-		".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".ts", ".mpg", ".mpeg",
-	}
-
 	ext := strings.ToLower(path.Ext(name))
-	for _, videoExt := range videoExtensions {
+	for _, videoExt := range transcoding.VideoExtensions {
 		if ext == videoExt {
 			return true
 		}
@@ -401,7 +398,7 @@ func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 243, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 240, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -422,7 +419,7 @@ func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 247, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 244, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -440,7 +437,7 @@ func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs("/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 255, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 252, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -462,7 +459,7 @@ func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(entry.QueueInfo)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 261, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 258, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -480,7 +477,7 @@ func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 264, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 261, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -493,7 +490,7 @@ func filelist(p string, sortOption string, queue []TaskState) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(humanize.Bytes(uint64(entry.Size)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 267, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/filepicker.templ`, Line: 264, Col: 43}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {

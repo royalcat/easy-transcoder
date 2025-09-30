@@ -8,6 +8,10 @@ import (
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
+var VideoExtensions = []string{
+	".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".ts", ".mpg", ".mpeg",
+}
+
 type CodecFilter struct {
 	Codecs []string `koanf:"codecs"`
 }

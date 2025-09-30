@@ -2,6 +2,7 @@ package elements
 
 import (
 	"github.com/dustin/go-humanize"
+	"github.com/royalcat/easy-transcoder/internal/transcoding"
 	"github.com/royalcat/easy-transcoder/templui/components/button"
 	"github.com/royalcat/easy-transcoder/templui/components/icon"
 	"github.com/royalcat/easy-transcoder/templui/components/input"
@@ -14,12 +15,8 @@ import (
 
 // isVideoFile checks if a file has a video extension
 func isVideoFile(name string) bool {
-	videoExtensions := []string{
-		".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".ts", ".mpg", ".mpeg",
-	}
-
 	ext := strings.ToLower(path.Ext(name))
-	for _, videoExt := range videoExtensions {
+	for _, videoExt := range transcoding.VideoExtensions {
 		if ext == videoExt {
 			return true
 		}
