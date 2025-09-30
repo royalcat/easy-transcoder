@@ -554,9 +554,6 @@ func (s *server) submitTaskCancellation(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Failed to cancel task: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Refresh the queue after cancellation
-	s.getqueue(w, r)
 }
 
 func assetsRoutes(mux *http.ServeMux) {

@@ -136,10 +136,8 @@ templ taskCard(task TaskState) {
 							@button.Button(button.Props{
 								Variant: button.VariantDestructive,
 								Attributes: templ.Attributes{
-									"hx-post":   "/submit/cancel",
-									"hx-vals":   `{"taskid": "` + task.ID + `"}`,
-									"hx-target": "#queue-grid",
-									"hx-swap":   "outerHTML",
+									"hx-post": "/submit/cancel",
+									"hx-vals": `{"taskid": "` + task.ID + `"}`,
 								},
 							}) {
 								Cancel
@@ -170,10 +168,8 @@ templ taskCard(task TaskState) {
 											Variant: button.VariantDestructive,
 											Size:    button.SizeIcon,
 											Attributes: templ.Attributes{
-												"hx-post":   "/submit/cancel",
-												"hx-vals":   `{"taskid": "` + task.ID + `"}`,
-												"hx-target": "#queue-grid",
-												"hx-swap":   "outerHTML",
+												"hx-post": "/submit/cancel",
+												"hx-vals": `{"taskid": "` + task.ID + `"}`,
 											},
 										}) {
 											@icon.X()
