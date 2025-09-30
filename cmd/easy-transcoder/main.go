@@ -470,8 +470,7 @@ func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
 
 			ext := strings.ToLower(filepath.Ext(path))
 
-			if slices.Contains(transcoding.VideoExtensions, ext) {
-				log.Info("skipping file due to extension", "file", path)
+			if !slices.Contains(transcoding.VideoExtensions, ext) {
 				continue
 			}
 
