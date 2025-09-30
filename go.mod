@@ -1,6 +1,6 @@
 module github.com/royalcat/easy-transcoder
 
-go 1.24.2
+go 1.25
 
 tool (
 	github.com/a-h/templ/cmd/templ
@@ -12,6 +12,7 @@ require (
 	github.com/Oudwins/tailwind-merge-go v0.2.0
 	github.com/a-h/templ v0.3.943
 	github.com/dustin/go-humanize v1.0.1
+	github.com/klauspost/compress v1.18.0
 	github.com/knadh/koanf/parsers/yaml v1.0.0
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.0
@@ -19,6 +20,7 @@ require (
 	github.com/knadh/koanf/v2 v2.2.0
 	github.com/shirou/gopsutil/v4 v4.25.3
 	github.com/u2takey/ffmpeg-go v0.5.0
+	github.com/ulikunitz/xz v0.5.15
 	golang.org/x/sys v0.34.0
 )
 

@@ -3,6 +3,7 @@ package processor
 import (
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -18,9 +19,13 @@ type Processor struct {
 	tasksMu sync.RWMutex
 	tasks   map[uint64]*task
 
+	ffmpegPath func() string
+
 	logger *slog.Logger
 	config config.Config
 }
+
+const defaultFFmpegPath = "ffmpeg"
 
 // NewProcessor creates a new task processor.
 func NewProcessor(config config.Config, logger *slog.Logger) *Processor {
@@ -28,11 +33,33 @@ func NewProcessor(config config.Config, logger *slog.Logger) *Processor {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 
+	ffmpegPath := sync.OnceValue(func() string {
+		log := logger.With("component", "setup-custom-ffmpeg", "url", config.CustomFFmpegURL)
+		if config.CustomFFmpegURL == "" {
+			return defaultFFmpegPath
+		} else if strings.HasPrefix(config.CustomFFmpegURL, "https://") || strings.HasPrefix(config.CustomFFmpegURL, "http://") {
+			log.Info("custom ffmpeg url detected, downloading and extracting")
+			binaryPath := "./custom-ffmpeg"
+			err := downloadAndExtract(config.CustomFFmpegURL, binaryPath)
+			if err != nil {
+				log.Error("failed to download and extract custom ffmpeg", "error", err.Error())
+				return defaultFFmpegPath
+			}
+			log.Info("custom ffmpeg downloaded and extracted")
+			return binaryPath
+		} else {
+			log.Error("invalid ffmpeg url, using default", "url", config.CustomFFmpegURL)
+			return defaultFFmpegPath
+		}
+	})
+	go ffmpegPath()
+
 	return &Processor{
-		config: config,
-		queue:  make(chan *task, 100),
-		tasks:  map[uint64]*task{},
-		logger: logger,
+		config:     config,
+		queue:      make(chan *task, 100),
+		tasks:      map[uint64]*task{},
+		ffmpegPath: ffmpegPath,
+		logger:     logger,
 	}
 }
 

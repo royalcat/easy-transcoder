@@ -65,7 +65,7 @@ func (q *Processor) processTask(task *task) {
 	defer os.Remove(progressSock)
 
 	// Prepare and run the command
-	cmd := preset.Compile(task.Input, task.TempFile, progressSock)
+	cmd := preset.Compile(q.ffmpegPath(), task.Input, task.TempFile, progressSock)
 	task.SetCommand(cmd)
 
 	cmd.Stderr = &task.stderr

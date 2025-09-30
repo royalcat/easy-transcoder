@@ -15,7 +15,7 @@ type Profile struct {
 	BatchExcludeFilter *CodecFilter `koanf:"batch_exclude_filter"`
 }
 
-func (p *Profile) Compile(input, output, progressSock string) *exec.Cmd {
+func (p *Profile) Compile(ffmpegPath, input, output, progressSock string) *exec.Cmd {
 	args := ffmpeg.KwArgs{
 		"map": "0",
 	}
@@ -27,6 +27,7 @@ func (p *Profile) Compile(input, output, progressSock string) *exec.Cmd {
 		Output(output, args).
 		GlobalArgs("-progress", "unix://"+progressSock).
 		OverWriteOutput().
+		SetFfmpegPath(ffmpegPath).
 		Compile()
 
 	return cmd

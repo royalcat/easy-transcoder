@@ -25,6 +25,8 @@ type LogConfig struct {
 
 // Config holds the application configuration
 type Config struct {
+	CustomFFmpegURL string `koanf:"custom_ffmpeg"`
+
 	TempDir  string                `koanf:"tempdir"`
 	Profiles []transcoding.Profile `koanf:"profiles"`
 	Logging  LogConfig             `koanf:"logging"`
