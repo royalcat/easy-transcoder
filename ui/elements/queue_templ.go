@@ -404,6 +404,7 @@ func taskCard(task TaskState) templ.Component {
 				Attributes: templ.Attributes{
 					"hx-post": "/submit/cancel",
 					"hx-vals": `{"taskid": "` + task.ID + `"}`,
+					"hx-swap": "none",
 				},
 			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
@@ -514,6 +515,7 @@ func taskCard(task TaskState) templ.Component {
 						Attributes: templ.Attributes{
 							"hx-post": "/submit/cancel",
 							"hx-vals": `{"taskid": "` + task.ID + `"}`,
+							"hx-swap": "none",
 						},
 					}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
@@ -717,7 +719,7 @@ func taskCard(task TaskState) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(string(task.Status))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/queue.templ`, Line: 221, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `ui/elements/queue.templ`, Line: 223, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {

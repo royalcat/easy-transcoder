@@ -138,6 +138,7 @@ templ taskCard(task TaskState) {
 								Attributes: templ.Attributes{
 									"hx-post": "/submit/cancel",
 									"hx-vals": `{"taskid": "` + task.ID + `"}`,
+									"hx-swap": "none",
 								},
 							}) {
 								Cancel
@@ -170,6 +171,7 @@ templ taskCard(task TaskState) {
 											Attributes: templ.Attributes{
 												"hx-post": "/submit/cancel",
 												"hx-vals": `{"taskid": "` + task.ID + `"}`,
+												"hx-swap": "none",
 											},
 										}) {
 											@icon.X()
