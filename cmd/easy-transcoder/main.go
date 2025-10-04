@@ -460,7 +460,6 @@ func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
 		log.Info("processing batch task submission", "dir", dir, "profile", profileName)
 
 		err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-			path = filepath.Join(dir, path)
 			ext := strings.ToLower(filepath.Ext(path))
 
 			if !slices.Contains(transcoding.VideoExtensions, ext) {
