@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -458,41 +459,40 @@ func (s *server) submitTaskBatch(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		log.Info("processing batch task submission", "dir", dir, "profile", profileName)
 
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			log.Error("failed to read directory", "dir", dir, "error", err)
-			return
-		}
-
-		for _, entry := range entries {
-			path := filepath.Join(dir, entry.Name())
-
+		err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+			path = filepath.Join(dir, path)
 			ext := strings.ToLower(filepath.Ext(path))
 
 			if !slices.Contains(transcoding.VideoExtensions, ext) {
-				continue
+				return nil
 			}
 
 			if profile.BatchExcludeFilter != nil {
 				matches, err := profile.BatchExcludeFilter.Matches(path)
 				if err != nil {
 					log.Error("error applying filter", "file", path, "error", err)
-					return
+					return nil
 				}
 				if matches {
 					log.Info("skipping file due to filter", "file", path)
-					continue
+					return nil
 				}
 			}
 
 			if s.Processor.HasTask(path, profileName) {
 				log.Info("skipping file, task already exists", "file", path, "profile", profileName)
-				continue
+				return nil
 			}
 
 			log.Info("adding file to queue", "file", path, "profile", profileName)
 			s.Processor.AddTask(path, profileName)
+
+			return nil
+		})
+		if err != nil {
+			log.Error("error processing batch task", "error", err)
 		}
+
 	}()
 }
 
