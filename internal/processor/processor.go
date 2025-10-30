@@ -24,6 +24,9 @@ type Processor struct {
 
 	logger *slog.Logger
 	config config.Config
+
+	// Callback for when tasks reach waiting_for_resolution status
+	onWaitingForResolution func(TaskState)
 }
 
 const defaultFFmpegPath = "ffmpeg"
@@ -122,6 +125,11 @@ func (p *Processor) CancelTask(id uint64) error {
 	}
 
 	return nil // Task not found
+}
+
+// SetOnWaitingForResolutionCallback sets a callback that gets called when a task transitions to waiting_for_resolution
+func (p *Processor) SetOnWaitingForResolutionCallback(callback func(TaskState)) {
+	p.onWaitingForResolution = callback
 }
 
 // getProfile retrieves a transcoding profile by name.

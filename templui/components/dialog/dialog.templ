@@ -1,4 +1,4 @@
-// templui component dialog - version: v0.97.0 installed by templui v0.97.0
+// templui component dialog - version: v0.98.0 installed by templui v0.98.0
 package dialog
 
 import (
@@ -235,6 +235,7 @@ templ Content(props ...ContentProps) {
 					) }
 				data-tui-dialog-close={ instanceID }
 				aria-label="Close"
+				type="button"
 			>
 				@icon.X()
 				<span class="sr-only">Close</span>
@@ -329,5 +330,5 @@ templ Description(props ...DescriptionProps) {
 }
 
 templ Script() {
-	<script defer nonce={ templ.GetNonce(ctx) } src="/assets/js/dialog.min.js"></script>
+	<script defer nonce={ templ.GetNonce(ctx) } src={ "/assets/js/dialog.min.js?v=" + utils.ScriptVersion }></script>
 }

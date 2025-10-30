@@ -1,4 +1,4 @@
-// templui component tooltip - version: v0.97.0 installed by templui v0.97.0
+// templui component tooltip - version: v0.98.0 installed by templui v0.98.0
 package tooltip
 
 import (
@@ -79,7 +79,7 @@ templ Content(props ...ContentProps) {
 	}
 	@popover.Content(popover.ContentProps{
 		ID:            p.ID,
-		Class:         utils.TwMerge("px-4 py-1 bg-foreground text-background border-foreground", p.Class),
+		Class:         utils.TwMerge("px-4 py-1 bg-foreground text-background [&_[data-tui-popover-arrow]]:!bg-foreground [&_[data-tui-popover-arrow]]:!border-0", p.Class),
 		Attributes:    p.Attributes,
 		Placement:     mapTooltipPositionToPopover(p.Position),
 		ShowArrow:     p.ShowArrow,

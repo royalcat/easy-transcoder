@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -47,6 +49,12 @@ func main() {
 		logger:    logger,
 	}
 
+	// Set up auto-reject callback
+	q.SetOnWaitingForResolutionCallback(s.handleTaskWaitingForResolution)
+
+	// Start periodic auto-reject scanner
+	go s.startPeriodicAutoRejectScanner()
+
 	templHandler := func(c templ.Component) http.Handler {
 		return templ.Handler(c,
 			templ.WithErrorHandler(func(r *http.Request, err error) http.Handler {
@@ -65,7 +73,7 @@ func main() {
 
 	assetsRoutes(mux)
 
-	mux.Handle("GET /", templHandler(pages.Root(q.FFmpegBinary(), cfg.Profiles, s.queue())))
+	mux.Handle("GET /", http.HandlerFunc(s.pageRoot))
 	mux.Handle("GET /resolver", http.HandlerFunc(s.pageResolver))
 	mux.Handle("GET /create-task", templHandler(pages.TaskCreation(q.FFmpegBinary(), cfg.Profiles, s.queue())))
 
@@ -83,6 +91,8 @@ func main() {
 	mux.Handle("POST /submit/task-batch", http.HandlerFunc(s.submitTaskBatch))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
 	mux.Handle("POST /submit/cancel", http.HandlerFunc(s.submitTaskCancellation))
+
+	mux.Handle("POST /settings/auto-reject-larger", http.HandlerFunc(s.submitAutoRejectSetting))
 
 	// mux.Handle("GET /elements/profileselector", http.HandlerFunc(s.getprofile))
 
@@ -164,6 +174,10 @@ type server struct {
 	Config    config.Config
 	Processor *processor.Processor
 	logger    *slog.Logger
+
+	// Auto-reject setting and mutex for thread safety
+	autoRejectMu     sync.RWMutex
+	autoRejectLarger bool
 }
 
 func (s *server) getfilebrowser(w http.ResponseWriter, r *http.Request) {
@@ -564,4 +578,131 @@ func assetsRoutes(mux *http.ServeMux) {
 	})
 
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assetHandler))
+}
+
+func (s *server) submitAutoRejectSetting(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		s.logger.Error("parse form error", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get the checkbox value - if present, it's checked (true), if absent, it's unchecked (false)
+	autoReject := r.FormValue("auto-reject-larger") == "on"
+
+	s.autoRejectMu.Lock()
+	s.autoRejectLarger = autoReject
+	s.autoRejectMu.Unlock()
+
+	s.logger.Info("auto-reject setting updated", "enabled", autoReject)
+
+	// If auto-reject is enabled, check all existing waiting_for_resolution tasks
+	if autoReject {
+		go s.processExistingWaitingTasks()
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *server) getAutoRejectSetting() bool {
+	s.autoRejectMu.RLock()
+	defer s.autoRejectMu.RUnlock()
+	return s.autoRejectLarger
+}
+
+func (s *server) pageRoot(w http.ResponseWriter, r *http.Request) {
+	err := pages.Root(s.Processor.FFmpegBinary(), s.Config.Profiles, s.queue(), s.getAutoRejectSetting()).Render(r.Context(), w)
+	if err != nil {
+		s.logger.Error("root page render error", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// handleTaskWaitingForResolution is called when a task transitions to waiting_for_resolution
+// and handles auto-rejection if enabled and result file is larger than original
+func (s *server) handleTaskWaitingForResolution(taskState processor.TaskState) {
+	// Check if auto-reject is enabled
+	if !s.getAutoRejectSetting() {
+		return
+	}
+
+	log := s.logger.With("task_id", taskState.ID, "input", taskState.Input, "temp", taskState.TempFile)
+
+	// Get file sizes
+	originalSize, err := s.getFileSize(taskState.Input)
+	if err != nil {
+		log.Error("failed to get original file size for auto-reject", "error", err)
+		return
+	}
+
+	resultSize, err := s.getFileSize(taskState.TempFile)
+	if err != nil {
+		log.Error("failed to get result file size for auto-reject", "error", err)
+		return
+	}
+
+	log.Debug("auto-reject comparing file sizes", "original_size", originalSize, "result_size", resultSize)
+
+	// If result file is larger than original, auto-reject
+	if resultSize > originalSize {
+		log.Info("auto-rejecting task due to larger result file",
+			"original_size", originalSize, "result_size", resultSize,
+			"size_diff", resultSize-originalSize)
+
+		// Use context.Background since this is an automated action
+		go s.Processor.ResolveTask(context.Background(), taskState.ID, false)
+	} else {
+		log.Debug("auto-reject: keeping task, result file is smaller or equal",
+			"original_size", originalSize, "result_size", resultSize)
+	}
+}
+
+// getFileSize returns the size of a file in bytes
+func (s *server) getFileSize(filePath string) (int64, error) {
+	if filePath == "" {
+		return 0, fmt.Errorf("file path is empty")
+	}
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	return fileInfo.Size(), nil
+}
+
+// processExistingWaitingTasks scans all existing tasks in waiting_for_resolution state
+// and applies auto-reject logic to them
+func (s *server) processExistingWaitingTasks() {
+	queue := s.Processor.GetQueue()
+	waitingCount := 0
+
+	for _, taskState := range queue {
+		if taskState.Status == processor.TaskStatusWaitingForResolution {
+			waitingCount++
+			s.handleTaskWaitingForResolution(taskState)
+		}
+	}
+
+	if waitingCount > 0 {
+		s.logger.Info("processed existing waiting_for_resolution tasks for auto-reject", "count", waitingCount)
+	}
+}
+
+// startPeriodicAutoRejectScanner runs a background process that periodically
+// scans for waiting_for_resolution tasks when auto-reject is enabled
+func (s *server) startPeriodicAutoRejectScanner() {
+	ticker := time.NewTicker(30 * time.Second) // Check every 30 seconds
+	defer ticker.Stop()
+
+	s.logger.Info("auto-reject scanner started")
+
+	for range ticker.C {
+		if s.getAutoRejectSetting() {
+			s.logger.Debug("auto-reject scanner checking existing waiting tasks")
+			s.processExistingWaitingTasks()
+		}
+	}
 }

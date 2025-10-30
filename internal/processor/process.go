@@ -103,6 +103,11 @@ func (p *Processor) processTask(task *task) {
 
 	log.Info("transcoding completed, mark waiting for resolution")
 	task.MarkWaitingForResolution()
+
+	// Call callback if set for auto-reject functionality
+	if p.onWaitingForResolution != nil {
+		p.onWaitingForResolution(task.State())
+	}
 }
 
 // tempFile creates a temporary file path for transcoding output.

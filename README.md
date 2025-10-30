@@ -21,7 +21,7 @@ Easy Transcoder is a self-hosted application that provides a user-friendly inter
 </p>
 <p align="center">
   <img alt="Queue" src=".github/media/queue.png" width="45%">
-&nbsp; &nbsp; &nbsp; 
+&nbsp; &nbsp; &nbsp;
   <img alt="Resolver" src=".github/media/resolver.png" width="45%">
 </p>
 
@@ -98,6 +98,8 @@ make generate
 - [ ] SSE for queue updates
 - [ ] task mutiprocessing
 - [ ] S3 (probably, using s3fs or similar may be an easier option)
+- [ ] Two-pass encoding
+- [ ] Dynamic parameters for profiles
 
 ### Not planned
 

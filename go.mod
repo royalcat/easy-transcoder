@@ -6,11 +6,12 @@ tool (
 	github.com/a-h/templ/cmd/templ
 	github.com/air-verse/air
 	github.com/bokwoon95/wgo
+	github.com/templui/templui/cmd/templui
 )
 
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.0
-	github.com/a-h/templ v0.3.943
+	github.com/a-h/templ v0.3.960
 	github.com/dustin/go-humanize v1.0.1
 	github.com/klauspost/compress v1.18.0
 	github.com/knadh/koanf/parsers/yaml v1.0.0
@@ -60,6 +61,7 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/tdewolff/parse/v2 v2.7.15 // indirect
+	github.com/templui/templui v0.98.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect

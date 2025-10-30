@@ -3,34 +3,63 @@ package pages
 import (
 	"github.com/royalcat/easy-transcoder/internal/transcoding"
 	"github.com/royalcat/easy-transcoder/templui/components/button"
+	"github.com/royalcat/easy-transcoder/templui/components/checkbox"
 	"github.com/royalcat/easy-transcoder/templui/components/dialog"
 	"github.com/royalcat/easy-transcoder/templui/components/label"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/layouts"
 )
 
-templ Root(ffmpegBinary string, profiles []transcoding.Profile, queue []elements.TaskState) {
+templ Root(ffmpegBinary string, profiles []transcoding.Profile, queue []elements.TaskState, autoRejectLarger bool) {
 	@layouts.BaseLayout(ffmpegBinary) {
 		<div class="flex flex-col gap-10">
-			@createTaskModalButton(profiles, queue)
+			<div class="flex gap-10">
+				@dialog.Trigger(dialog.TriggerProps{
+					For: dialogId,
+					// Class: "w-24",
+				}) {
+					@button.Button(button.Props{
+						// FullWidth: true,
+					}) {
+						Create Task
+					}
+				}
+				<div class="flex items-center gap-3">
+					@checkbox.Checkbox(checkbox.Props{
+						ID:      "auto-reject-larger",
+						Name:    "auto-reject-larger",
+						Class:   "checkbox checkbox-primary",
+						Checked: autoRejectLarger,
+						Attributes: templ.Attributes{
+							"hx-post":    "/settings/auto-reject-larger",
+							"hx-trigger": "change",
+							"hx-swap":    "none",
+						},
+					})
+					@label.Label(label.Props{
+						For: "auto-reject-larger",
+					}) {
+						Automatically reject results larger than original
+					}
+				</div>
+				// @globalAutoRejectSection(autoRejectLarger)
+			</div>
 			<div id="queue" hx-get="/elements/queue" hx-trigger="load, every 2s"></div>
 		</div>
+		@createTaskModal(profiles, queue)
 	}
 }
 
 const dialogId = "create-task-dialog"
 
-templ createTaskModalButton(profiles []transcoding.Profile, queue []elements.TaskState) {
-	@dialog.Trigger(dialog.TriggerProps{
-		For: dialogId,
-		// Class: "w-24",
-	}) {
-		@button.Button(button.Props{
-			// FullWidth: true,
-		}) {
-			Create Task
-		}
-	}
+// templ globalAutoRejectSection(autoRejectLarger bool) {
+// 	<div class="bg-base-200 p-4 rounded-lg">
+// 		<div class="flex items-center gap-3">
+// 			<label class="flex items-center gap-2 cursor-pointer"></label>
+// 		</div>
+// 	</div>
+// }
+templ createTaskModal(profiles []transcoding.Profile, queue []elements.TaskState) {
 	@dialog.Content(dialog.ContentProps{
 		ID:    dialogId,
 		Class: "min-w-3/4 max-w-2xl",
