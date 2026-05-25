@@ -16,7 +16,7 @@ COPY ./templui ./templui
 RUN --mount=type=cache,mode=0777,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -o /easy-transcoder ./cmd/easy-transcoder
 
-FROM linuxserver/ffmpeg:7.1.1
+FROM linuxserver/ffmpeg:version-8.1-cli
 
 WORKDIR /app
 
