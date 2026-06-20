@@ -1,7 +1,8 @@
-// templui component label - version: v0.98.0 installed by templui v0.98.0
+// templui component label - version: v1.12.0 installed by templui v1.12.0
+// 📚 Documentation: https://templui.io/docs/components/label
 package label
 
-import "github.com/royalcat/easy-transcoder/templui/components"
+import "github.com/royalcat/easy-transcoder/templui/utils"
 
 type Props struct {
 	ID         string
@@ -37,6 +38,10 @@ templ Label(props ...Props) {
 	</label>
 }
 
+var scriptOnce = templ.NewOnceHandle()
+
 templ Script() {
-	<script defer nonce={ templ.GetNonce(ctx) } src={ "/assets/js/label.min.js?v=" + utils.ScriptVersion }></script>
+	@scriptOnce.Once() {
+		@utils.ComponentScript("label")
+	}
 }

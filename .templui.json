@@ -1,6 +1,6 @@
 {
   "componentsDir": "templui/components",
-  "utilsDir": "templui/components",
+  "utilsDir": "templui/utils",
   "moduleName": "github.com/royalcat/easy-transcoder",
   "jsDir": "assets/js",
   "jsPublicPath": "/assets/js"

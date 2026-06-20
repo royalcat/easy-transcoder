@@ -64,7 +64,7 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 	</form>
 	<span id="spinner" class="hidden">
 		@icon.LoaderCircle(icon.Props{
-			Size: 16,
+			Class: "size-4",
 		})
 	</span>
 }
@@ -84,9 +84,7 @@ templ calculateScoreButton(score, inputFile, tempFile string) {
 			<span>{ strings.ToUpper(score) }</span>
 			@icon.LoaderCircle(icon.Props{
 				// ID:    score + "-spinner",
-				Size:  16,
-				Color: "text-primary-foreground",
-				Class: "htmx-indicator",
+				Class: "size-4 text-primary-foreground htmx-indicator",
 			})
 		</div>
 	}

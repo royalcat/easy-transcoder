@@ -60,61 +60,64 @@ const dialogId = "create-task-dialog"
 // 	</div>
 // }
 templ createTaskModal(profiles []transcoding.Profile, queue []elements.TaskState) {
-	@dialog.Content(dialog.ContentProps{
-		ID:    dialogId,
-		Class: "min-w-3/4 max-w-2xl",
+	@dialog.Dialog(dialog.Props{
+		ID: dialogId,
 	}) {
-		<form hx-post="/submit/task" hx-swap="none">
-			@dialog.Header() {
-				@dialog.Title() {
-					Create Task
-				}
-			}
-			<div class="flex flex-col gap-2">
-				@label.Label(label.Props{
-					Class: "text-lg font-semibold",
-				}) {
-					Profile
-				}
-				@elements.ProfileSelector(profiles)
-			</div>
-			<div class="flex flex-col gap-2">
-				@label.Label(label.Props{
-					Class: "text-lg font-semibold",
-				}) {
-					File
-				}
-				@elements.FilePicker("./media", "name_asc", queue)
-			</div>
-			@dialog.Footer(dialog.FooterProps{
-				// Class: "flex flex-row-reverse gap-4 justify-between",
-			}) {
-				@dialog.Close(dialog.CloseProps{
-					For: dialogId,
-				}) {
-					@button.Button(button.Props{
-						Type:    "submit",
-						Variant: button.VariantSecondary,
-						Attributes: templ.Attributes{
-							"formaction": "/submit/task-batch",
-						},
-					}) {
-						Submit Directory as Batch
+		@dialog.Content(dialog.ContentProps{
+			Class: "min-w-3/4 max-w-2xl",
+		}) {
+			<form hx-post="/submit/task" hx-swap="none">
+				@dialog.Header() {
+					@dialog.Title() {
+						Create Task
 					}
 				}
-				@dialog.Close(dialog.CloseProps{
-					For: dialogId,
-				}) {
-					@button.Button(button.Props{
-						Type: "submit",
-						Attributes: templ.Attributes{
-							"formaction": "/submit/task",
-						},
+				<div class="flex flex-col gap-2">
+					@label.Label(label.Props{
+						Class: "text-lg font-semibold",
 					}) {
-						Submit
+						Profile
+					}
+					@elements.ProfileSelector(profiles)
+				</div>
+				<div class="flex flex-col gap-2">
+					@label.Label(label.Props{
+						Class: "text-lg font-semibold",
+					}) {
+						File
+					}
+					@elements.FilePicker("./media", "name_asc", queue)
+				</div>
+				@dialog.Footer(dialog.FooterProps{
+					// Class: "flex flex-row-reverse gap-4 justify-between",
+				}) {
+					@dialog.Close(dialog.CloseProps{
+						For: dialogId,
+					}) {
+						@button.Button(button.Props{
+							Type:    "submit",
+							Variant: button.VariantSecondary,
+							Attributes: templ.Attributes{
+								"formaction": "/submit/task-batch",
+							},
+						}) {
+							Submit Directory as Batch
+						}
+					}
+					@dialog.Close(dialog.CloseProps{
+						For: dialogId,
+					}) {
+						@button.Button(button.Props{
+							Type: "submit",
+							Attributes: templ.Attributes{
+								"formaction": "/submit/task",
+							},
+						}) {
+							Submit
+						}
 					}
 				}
-			}
-		</form>
+			</form>
+		}
 	}
 }

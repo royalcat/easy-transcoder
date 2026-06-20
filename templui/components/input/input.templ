@@ -1,10 +1,11 @@
-// templui component input - version: v0.98.0 installed by templui v0.98.0
+// templui component input - version: v1.12.0 installed by templui v1.12.0
+// 📚 Documentation: https://templui.io/docs/components/input
 package input
 
 import (
 	"github.com/royalcat/easy-transcoder/templui/components/button"
 	"github.com/royalcat/easy-transcoder/templui/components/icon"
-	"github.com/royalcat/easy-transcoder/templui/components"
+	"github.com/royalcat/easy-transcoder/templui/utils"
 )
 
 type Type string
@@ -112,20 +113,20 @@ templ Input(props ...Props) {
 				Attributes: templ.Attributes{"data-tui-input-toggle-password": p.ID},
 			}) {
 				<span class="icon-open block">
-					@icon.Eye(icon.Props{
-						Size: 18,
-					})
+					@icon.Eye(icon.Props{Class: "size-[18px]"})
 				</span>
 				<span class="icon-closed hidden">
-					@icon.EyeOff(icon.Props{
-						Size: 18,
-					})
+					@icon.EyeOff(icon.Props{Class: "size-[18px]"})
 				</span>
 			}
 		}
 	</div>
 }
 
+var scriptOnce = templ.NewOnceHandle()
+
 templ Script() {
-	<script defer nonce={ templ.GetNonce(ctx) } src={ "/assets/js/input.min.js?v=" + utils.ScriptVersion }></script>
+	@scriptOnce.Once() {
+		@utils.ComponentScript("input")
+	}
 }

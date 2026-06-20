@@ -1,9 +1,10 @@
-// templui component tooltip - version: v0.98.0 installed by templui v0.98.0
+// templui component tooltip - version: v1.12.0 installed by templui v1.12.0
+// 📚 Documentation: https://templui.io/docs/components/tooltip
 package tooltip
 
 import (
 	"github.com/royalcat/easy-transcoder/templui/components/popover"
-	"github.com/royalcat/easy-transcoder/templui/components"
+	"github.com/royalcat/easy-transcoder/templui/utils"
 )
 
 type Position string
@@ -15,7 +16,6 @@ const (
 	PositionLeft   Position = "left"
 )
 
-// Map tooltip positions to popover positions
 func mapTooltipPositionToPopover(position Position) popover.Placement {
 	switch position {
 	case PositionTop:
@@ -41,7 +41,6 @@ type TriggerProps struct {
 	ID         string
 	Class      string
 	Attributes templ.Attributes
-	For        string
 }
 
 type ContentProps struct {
@@ -55,7 +54,17 @@ type ContentProps struct {
 }
 
 templ Tooltip(props ...Props) {
-	{ children... }
+	{{ var p Props }}
+	if len(props) > 0 {
+		{{ p = props[0] }}
+	}
+	@popover.Root(popover.RootProps{
+		ID:         p.ID,
+		Class:      p.Class,
+		Attributes: p.Attributes,
+	}) {
+		{ children... }
+	}
 }
 
 templ Trigger(props ...TriggerProps) {
@@ -65,8 +74,9 @@ templ Trigger(props ...TriggerProps) {
 	}
 	@popover.Trigger(popover.TriggerProps{
 		ID:          p.ID,
+		Class:       p.Class,
+		Attributes:  p.Attributes,
 		TriggerType: popover.TriggerTypeHover,
-		For:         p.For,
 	}) {
 		{ children... }
 	}
@@ -87,5 +97,13 @@ templ Content(props ...ContentProps) {
 		HoverOutDelay: p.HoverOutDelay,
 	}) {
 		{ children... }
+	}
+}
+
+var scriptOnce = templ.NewOnceHandle()
+
+templ Script() {
+	@scriptOnce.Once() {
+		@popover.Script()
 	}
 }

@@ -1,22 +1,24 @@
-// templui component checkbox - version: v0.98.0 installed by templui v0.98.0
+// templui component checkbox - version: v1.12.0 installed by templui v1.12.0
+// 📚 Documentation: https://templui.io/docs/components/checkbox
 package checkbox
 
 import (
 	"github.com/royalcat/easy-transcoder/templui/components/icon"
-	"github.com/royalcat/easy-transcoder/templui/components"
+	"github.com/royalcat/easy-transcoder/templui/utils"
 )
 
 type Props struct {
-	ID         string
-	Class      string
-	Attributes templ.Attributes
-	Name       string
-	Value      string
-	Disabled   bool
-	Required   bool
-	Checked    bool
-	Form       string
-	Icon       templ.Component
+	ID          string
+	Class       string
+	Attributes  templ.Attributes
+	Name        string
+	Value       string
+	Disabled    bool
+	Checked     bool
+	Group       string
+	GroupParent bool
+	Form        string
+	Icon        templ.Component
 }
 
 templ Checkbox(props ...Props) {
@@ -28,7 +30,6 @@ templ Checkbox(props ...Props) {
 		<input
 			checked?={ p.Checked }
 			disabled?={ p.Disabled }
-			required?={ p.Required }
 			if p.ID != "" {
 				id={ p.ID }
 			}
@@ -43,6 +44,12 @@ templ Checkbox(props ...Props) {
 			if p.Form != "" {
 				form={ p.Form }
 			}
+			if p.Group != "" {
+				data-tui-checkbox-group={ p.Group }
+			}
+			if p.GroupParent {
+				data-tui-checkbox-parent="true"
+			}
 			type="checkbox"
 			class={
 				utils.TwMerge(
@@ -50,6 +57,7 @@ templ Checkbox(props ...Props) {
 					"focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring",
 					"disabled:cursor-not-allowed disabled:opacity-50",
 					"checked:bg-primary checked:text-primary-foreground checked:border-primary",
+					"indeterminate:bg-primary indeterminate:text-primary-foreground indeterminate:border-primary",
 					"appearance-none cursor-pointer transition-shadow",
 					"relative",
 					p.Class,
@@ -58,13 +66,26 @@ templ Checkbox(props ...Props) {
 			{ p.Attributes... }
 		/>
 		<div
-			class="absolute left-0 top-0 h-4 w-4 pointer-events-none flex items-center justify-center text-primary-foreground opacity-0 peer-checked:opacity-100"
+			class="absolute inset-0 pointer-events-none flex items-center justify-center text-primary-foreground opacity-0 peer-checked:opacity-100"
 		>
 			if p.Icon != nil {
 				@p.Icon
 			} else {
-				@icon.Check(icon.Props{Size: 14})
+				@icon.Check(icon.Props{Class: "size-3.5"})
 			}
 		</div>
+		<div
+			class="absolute inset-0 pointer-events-none flex items-center justify-center text-primary-foreground opacity-0 peer-indeterminate:opacity-100"
+		>
+			@icon.Minus(icon.Props{Class: "size-3.5"})
+		</div>
 	</div>
+}
+
+var scriptOnce = templ.NewOnceHandle()
+
+templ Script() {
+	@scriptOnce.Once() {
+		@utils.ComponentScript("checkbox")
+	}
 }

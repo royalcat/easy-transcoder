@@ -9,19 +9,14 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 )
 
 // isVideoFile checks if a file has a video extension
 func isVideoFile(name string) bool {
-	ext := strings.ToLower(path.Ext(name))
-	for _, videoExt := range transcoding.VideoExtensions {
-		if ext == videoExt {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(transcoding.VideoExtensions, strings.ToLower(path.Ext(name)))
 }
 
 // FileEntry represents a file with its info for sorting
@@ -198,10 +193,10 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 				Name ↓
 			}
 			{{
-					sizeAscVariant := button.VariantGhost
-					if sortOption == "size_asc" {
-						sizeAscVariant = button.VariantSecondary
-					}
+				sizeAscVariant := button.VariantGhost
+				if sortOption == "size_asc" {
+					sizeAscVariant = button.VariantSecondary
+				}
 			}}
 			@button.Button(button.Props{
 				Variant: sizeAscVariant,
@@ -214,10 +209,10 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 				Size ↑
 			}
 			{{
-			sizeDescVariant := button.VariantGhost
-			if sortOption == "size_desc" {
-				sizeDescVariant = button.VariantSecondary
-			}
+				sizeDescVariant := button.VariantGhost
+				if sortOption == "size_desc" {
+					sizeDescVariant = button.VariantSecondary
+				}
 			}}
 			@button.Button(button.Props{
 				Variant: sizeDescVariant,
@@ -233,9 +228,7 @@ templ filelist(p string, sortOption string, queue []TaskState) {
 	</div>
 	<ul class="flex flex-col gap-3">
 		for _, entry := range allEntries {
-			{{
-				urlpath := url.QueryEscape(entry.Path)
-			}}
+			{{ urlpath := url.QueryEscape(entry.Path) }}
 			if entry.IsDir {
 				<a hx-get={ "/elements/filepicker?path=" + urlpath + "&sort=" + url.QueryEscape(sortOption) } hx-target="#filepicker" hx-swap="outerHTML">
 					<li class="flex justify-between items-center group">
