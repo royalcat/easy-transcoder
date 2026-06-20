@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 )
 
@@ -28,12 +30,14 @@ func executeFFmpegCommand(ctx context.Context, args []string) (string, error) {
 	return stderr.String(), nil
 }
 
+const VMAFSubsample = 5
+
 func CalculateVMAF(ctx context.Context, reference, distorted string) (float64, error) {
 	args := []string{
 		"-hwaccel", "auto",
 		"-i", distorted,
 		"-i", reference,
-		"-filter_complex", "libvmaf",
+		"-filter_complex", fmt.Sprintf("libvmaf=n_threads=%d:n_subsample=%d", max(1, runtime.GOMAXPROCS(0)), VMAFSubsample),
 		"-f", "null", "-",
 	}
 
@@ -46,8 +50,8 @@ func CalculateVMAF(ctx context.Context, reference, distorted string) (float64, e
 	var vmafScore float64
 
 	// Look for the VMAF score line
-	// Example: "[libvmaf @ 0x1b5b700] VMAF score: 99.055347"
-	var re = regexp.MustCompile(`\[libvmaf[^]]*\]\s*VMAF score:\s*(\d+\.\d+)`)
+	// Example: "[libvmaf @ 0x1b5b700] VMAF score: 99.055347", "Parsed_libvmaf_0 @ 0x7faca4004340] VMAF score: 97.248403"
+	var re = regexp.MustCompile(`.*VMAF score:\s*(\d+\.\d+)`)
 	matches := re.FindStringSubmatch(output)
 
 	if len(matches) > 1 {
@@ -57,6 +61,8 @@ func CalculateVMAF(ctx context.Context, reference, distorted string) (float64, e
 		}
 		return vmafScore, nil
 	}
+
+	slog.Error("VMAF score not found in output", "output", output)
 
 	return 0, fmt.Errorf("VMAF score not found in output")
 }
