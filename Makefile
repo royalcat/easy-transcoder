@@ -4,7 +4,10 @@ templ:
 tailwind: templ
 	tailwindcss -i ./assets/css/input.css -o ./assets/css/output.css
 
-generate: templ tailwind
+minify-js:
+	npx -y esbuild internal/js/videosync.js --minify --outfile=assets/js/videosync.min.js
+
+generate: templ tailwind minify-js
 
 build-dir:
 	mkdir -p build

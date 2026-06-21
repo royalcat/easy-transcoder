@@ -87,6 +87,8 @@ func main() {
 	mux.Handle("GET /metrics/psnr", http.HandlerFunc(s.getPSNR))
 	mux.Handle("GET /metrics/ssim", http.HandlerFunc(s.getSSIM))
 
+	mux.Handle("GET /media/", http.HandlerFunc(s.serveMedia))
+
 	mux.Handle("POST /submit/task", http.HandlerFunc(s.submitTask))
 	mux.Handle("POST /submit/task-batch", http.HandlerFunc(s.submitTaskBatch))
 	mux.Handle("POST /submit/resolve", http.HandlerFunc(s.submitTaskResolution))
@@ -671,6 +673,62 @@ func (s *server) getFileSize(filePath string) (int64, error) {
 	}
 
 	return fileInfo.Size(), nil
+}
+
+// serveMedia serves video files over HTTP with byte-range support for <video> seeking.
+// Accepts a ?path= query parameter with the filesystem path to the file.
+func (s *server) serveMedia(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("path")
+	if filePath == "" {
+		http.Error(w, "Missing 'path' parameter", http.StatusBadRequest)
+		return
+	}
+
+	cleanPath := filepath.Clean(filePath)
+	info, err := os.Stat(cleanPath)
+	if err != nil {
+		s.logger.Error("media file not found", "path", cleanPath, "error", err)
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+	if info.IsDir() {
+		http.Error(w, "Cannot serve directory", http.StatusBadRequest)
+		return
+	}
+
+	mimeType := mimeTypeFromExt(filepath.Ext(cleanPath))
+
+	file, err := os.Open(cleanPath)
+	if err != nil {
+		s.logger.Error("media file open failed", "path", cleanPath, "error", err)
+		http.Error(w, "Cannot open file", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Accept-Ranges", "bytes")
+	http.ServeContent(w, r, filepath.Base(cleanPath), info.ModTime(), file)
+}
+
+// mimeTypeFromExt returns the MIME type for a given file extension.
+func mimeTypeFromExt(ext string) string {
+	switch strings.ToLower(ext) {
+	case ".mp4":
+		return "video/mp4"
+	case ".webm":
+		return "video/webm"
+	case ".mkv":
+		return "video/x-matroska"
+	case ".avi":
+		return "video/x-msvideo"
+	case ".mov":
+		return "video/quicktime"
+	case ".ogv", ".ogg":
+		return "video/ogg"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // processExistingWaitingTasks scans all existing tasks in waiting_for_resolution state

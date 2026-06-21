@@ -128,7 +128,7 @@ func BaseLayout(ffmpegBinary string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<!-- Theme switcher script -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<!-- Video sync script for resolver split-view --><script src=\"/assets/js/videosync.min.js\"></script><!-- Theme switcher script -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

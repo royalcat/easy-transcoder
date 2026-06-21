@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @source "/home/royalcat/.go/pkg/mod/github.com/axzilla/templui@*/**/*.{go,templ}";
+@source "../ui/**/*.{go,templ}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

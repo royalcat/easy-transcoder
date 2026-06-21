@@ -1,0 +1,79 @@
+package elements
+
+import (
+	"net/url"
+)
+
+templ VideoCompare(inputFile, tempFile string) {
+	<div
+		x-data="videoSplitCompare"
+		class="relative w-full my-6 select-none"
+		@mousemove.window="onDrag($event)"
+		@mouseup.window="onDragEnd()"
+		@touchmove.window="onDrag($event)"
+		@touchend.window="onDragEnd()"
+	>
+		<!-- Labels -->
+		<div class="flex flex-row justify-between mb-2 px-2">
+			<div class="text-sm font-semibold text-muted-foreground">Original</div>
+			<div class="text-sm font-semibold text-muted-foreground">Transcoded</div>
+		</div>
+		<!-- Comparison container -->
+		<div
+			x-ref="container"
+			class="relative w-full overflow-hidden rounded border border-border bg-black"
+			style="aspect-ratio: 16/9;"
+		>
+			<!-- Background: Original video (full width) -->
+			<video
+				x-ref="videoA"
+				src={ templ.URL("/media/?path=" + url.QueryEscape(inputFile)) }
+				preload="metadata"
+				class="absolute inset-0 w-full h-full object-contain"
+				@play="onPlay($refs.videoA)"
+				@pause="onPause($refs.videoA)"
+				@seeking="onSeek($refs.videoA)"
+				@seeked="onSeeked($refs.videoA)"
+			>
+			</video>
+			<!-- Foreground: Transcoded video (clipped) -->
+			<video
+				x-ref="videoB"
+				src={ templ.URL("/media/?path=" + url.QueryEscape(tempFile)) }
+				preload="metadata"
+				class="absolute inset-0 w-full h-full object-contain"
+				:style="'clip-path: inset(0 0 0 ' + position + '%)'"
+				@play="onPlay($refs.videoB)"
+				@pause="onPause($refs.videoB)"
+				@seeking="onSeek($refs.videoB)"
+				@seeked="onSeeked($refs.videoB)"
+			>
+			</video>
+			<!-- Draggable handle -->
+			<div
+				x-ref="handle"
+				class="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10"
+				:style="'left: ' + position + '%'"
+				@mousedown.prevent="onDragStart()"
+				@touchstart.prevent="onDragStart()"
+			>
+				<!-- Handle grip circle -->
+				<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+					<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-width="2" d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>
+					</svg>
+				</div>
+			</div>
+		</div>
+		<!-- Playback controls -->
+		<div class="flex justify-center gap-2 mt-3">
+			<button
+				type="button"
+				class="px-3 py-1 text-sm border rounded hover:bg-accent"
+				@click="$refs.videoA.paused ? $refs.videoA.play() : $refs.videoA.pause()"
+			>
+				<span x-text="$refs.videoA && $refs.videoA.paused ? '▶ Play' : '⏸ Pause'"></span>
+			</button>
+		</div>
+	</div>
+}

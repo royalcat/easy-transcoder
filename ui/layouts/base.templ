@@ -56,6 +56,8 @@ templ BaseLayout(ffmpegBinary string) {
 			@popover.Script()
 			@input.Script()
 			@progress.Script()
+			<!-- Video sync script for resolver split-view -->
+			<script src="/assets/js/videosync.min.js"></script>
 			<!-- Theme switcher script -->
 			@themeSwitcherScript()
 			<style>

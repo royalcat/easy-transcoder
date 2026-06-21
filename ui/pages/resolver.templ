@@ -33,6 +33,7 @@ templ resolveMenu(taskId, inputFile, tempFile string) {
 				@elements.FileInfo(tempFile)
 			</div>
 		</div>
+		@elements.VideoCompare(inputFile, tempFile)
 		<div class="my-6 p-4 border rounded bg-card">
 			<div class="text-lg font-bold mb-3 text-center">Video Quality Metrics</div>
 			<div class="flex flex-row gap-4">
