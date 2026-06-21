@@ -1,8 +1,10 @@
 package elements
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/royalcat/easy-transcoder/internal/processor"
 	"github.com/royalcat/easy-transcoder/templui/components/button"
 	"github.com/royalcat/easy-transcoder/templui/components/icon"
@@ -18,10 +20,12 @@ type TaskState struct {
 	ID string
 
 	// Input/Output configuration
-	Preset    string
-	FileName  string
-	InputFile string
-	TempFile  string
+	Preset        string
+	FileName      string
+	InputFile     string
+	TempFile      string
+	InputFileSize int64
+	TempFileSize  int64
 
 	// Status information
 	Status   processor.TaskStatus
@@ -121,6 +125,15 @@ templ taskCard(task TaskState) {
 					<p class="text-sm text-muted-foreground">Preset: { task.Preset }</p>
 					if !task.CreatedAt.IsZero() {
 						<p class="text-sm text-muted-foreground">Created: { task.CreatedAt.Format("Jan 02 15:04:05") }</p>
+					}
+					if task.Status == processor.TaskStatusWaitingForResolution && task.InputFileSize > 0 && task.TempFileSize > 0 {
+						{{ reduction := (1.0 - float64(task.TempFileSize)/float64(task.InputFileSize)) * 100.0 }}
+						<p class="text-sm text-muted-foreground">
+							Size: { humanize.Bytes(uint64(task.InputFileSize)) } → { humanize.Bytes(uint64(task.TempFileSize)) }
+						</p>
+						<p class={ "text-sm font-semibold", templ.KV("text-success", reduction > 0), templ.KV("text-destructive", reduction < 0) }>
+							{ fmt.Sprintf("%+.1f%%", reduction) }
+						</p>
 					}
 					if task.Status == processor.TaskStatusFailed && task.Error != "" {
 						<div class="mt-2 p-2 bg-destructive/10 border border-destructive rounded-md">

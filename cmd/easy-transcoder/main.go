@@ -237,16 +237,26 @@ func mapTaskState(task processor.TaskState) elements.TaskState {
 		errorMessage = task.Error.Error()
 	}
 
+	var inputSize, tempSize int64
+	if info, err := os.Stat(task.Input); err == nil {
+		inputSize = info.Size()
+	}
+	if info, err := os.Stat(task.TempFile); err == nil {
+		tempSize = info.Size()
+	}
+
 	return elements.TaskState{
-		ID:        strconv.Itoa(int(task.ID)),
-		Preset:    task.Preset,
-		FileName:  path.Base(task.Input),
-		Status:    task.Status,
-		Progress:  task.Progress,
-		InputFile: task.Input,
-		TempFile:  task.TempFile,
-		CreatedAt: task.CreateAt,
-		Error:     errorMessage,
+		ID:            strconv.Itoa(int(task.ID)),
+		Preset:        task.Preset,
+		FileName:      path.Base(task.Input),
+		Status:        task.Status,
+		Progress:      task.Progress,
+		InputFile:     task.Input,
+		TempFile:      task.TempFile,
+		InputFileSize: inputSize,
+		TempFileSize:  tempSize,
+		CreatedAt:     task.CreateAt,
+		Error:         errorMessage,
 	}
 }
 
