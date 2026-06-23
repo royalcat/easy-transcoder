@@ -134,20 +134,6 @@ func (h *APIHandlers) HandleTaskProgress(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Reject if a stale worker reports progress for a task that was
-	// requeued and reassigned to a different worker.
-	taskState := h.manager.processor.GetTask(req.TaskID)
-	if taskState.WorkerID != "" && taskState.WorkerID != req.WorkerID {
-		h.logger.Info("rejecting progress from stale worker",
-			"task_id", req.TaskID,
-			"reporting_worker", req.WorkerID,
-			"assigned_worker", taskState.WorkerID)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		w.Write([]byte(`{"error":"task was reassigned"}`))
-		return
-	}
-
 	if err := h.manager.ReportProgress(req.WorkerID, req.TaskID, req.Progress); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -178,18 +164,6 @@ func (h *APIHandlers) HandleTaskComplete(w http.ResponseWriter, r *http.Request)
 	if h.manager.ShouldCancelTask(taskID) {
 		h.logger.Info("rejecting completion for cancelled task", "task_id", taskID)
 		http.Error(w, "task was cancelled", http.StatusConflict)
-		return
-	}
-
-	// Reject if a stale worker tries to complete a task that was
-	// requeued and reassigned to a different worker.
-	taskState := h.manager.processor.GetTask(taskID)
-	if taskState.WorkerID != "" && taskState.WorkerID != workerID {
-		h.logger.Info("rejecting completion from stale worker",
-			"task_id", taskID,
-			"reporting_worker", workerID,
-			"assigned_worker", taskState.WorkerID)
-		http.Error(w, "task was reassigned", http.StatusConflict)
 		return
 	}
 

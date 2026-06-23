@@ -44,6 +44,8 @@ var (
 	ffmpegPath = flag.String("ffmpeg-path", "ffmpeg", "Path to the FFmpeg binary")
 )
 
+var httpClient = &http.Client{}
+
 func main() {
 	flag.Parse()
 
@@ -79,7 +81,6 @@ func main() {
 	// Handle graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
 
 	// Start heartbeat goroutine
 	stopHeartbeat := make(chan struct{})
@@ -241,7 +242,7 @@ func processTask(workerID string, task *acquireTaskResponse) {
 	}
 	inputReq.Header.Set("Authorization", "Bearer "+*apiToken)
 
-	inputResp, err := http.DefaultClient.Do(inputReq)
+	inputResp, err := httpClient.Do(inputReq)
 	if err != nil {
 		log.Printf("input request failed for task %d: %v", task.ID, err)
 		reportCompletion(workerID, task.ID, false, err.Error())
@@ -268,7 +269,15 @@ func processTask(workerID string, task *acquireTaskResponse) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = inputResp.Body
 
-	// Capture stderr via pipe for progress parsing and error logging
+	// Progress on stdout (clean, no FFmpeg errors mixed in)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Printf("stdout pipe failed for task %d: %v", task.ID, err)
+		reportCompletion(workerID, task.ID, false, err.Error())
+		return
+	}
+
+	// Errors on stderr (captured separately for clean error logging)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		log.Printf("stderr pipe failed for task %d: %v", task.ID, err)
@@ -277,7 +286,6 @@ func processTask(workerID string, task *acquireTaskResponse) {
 	}
 
 	var stderrBuf bytes.Buffer
-	stderrTee := io.TeeReader(stderr, &stderrBuf)
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("ffmpeg start failed for task %d: %v", task.ID, err)
@@ -285,9 +293,12 @@ func processTask(workerID string, task *acquireTaskResponse) {
 		return
 	}
 
-	// Parse progress from stderr; progressDone also signals cancellation
+	// Drain stderr into buffer in background
+	go func() { io.Copy(&stderrBuf, stderr) }()
+
+	// Parse progress from stdout; progressDone signals cancellation
 	progressDone := make(chan struct{})
-	go parseProgressLines(workerID, task.ID, task.TotalDuration, stderrTee, progressDone)
+	go parseProgressLines(workerID, task.ID, task.TotalDuration, stdout, progressDone)
 
 	// Wait for FFmpeg in a goroutine so we can also watch for cancellation
 	waitDone := make(chan error, 1)
@@ -298,7 +309,7 @@ func processTask(workerID string, task *acquireTaskResponse) {
 	var waitErr error
 	select {
 	case waitErr = <-waitDone:
-		// FFmpeg completed normally
+		// FFmpeg completed normally — progressDone was not closed.
 	case <-progressDone:
 		// Server signalled cancellation via 409 on progress report.
 		// Kill FFmpeg and stop — the server already marked the task
@@ -308,7 +319,6 @@ func processTask(workerID string, task *acquireTaskResponse) {
 		<-waitDone
 		return
 	}
-	<-progressDone
 
 	if waitErr != nil {
 		log.Printf("ffmpeg failed for task %d: %v\nffmpeg stderr:\n%s", task.ID, waitErr, stderrBuf.String())
@@ -339,7 +349,7 @@ func processTask(workerID string, task *acquireTaskResponse) {
 // buildFFmpegArgs constructs an FFmpeg command line.
 // Input is read from stdin (pipe:0), output goes to the given file path.
 func buildFFmpegArgs(ffBin, output string, params map[string]string) []string {
-	args := []string{ffBin, "-progress", "pipe:2", "-i", "pipe:0", "-map", "0"}
+	args := []string{ffBin, "-progress", "pipe:1", "-i", "pipe:0", "-map", "0"}
 	for k, v := range params {
 		args = append(args, "-"+k, v)
 	}
@@ -350,8 +360,6 @@ func buildFFmpegArgs(ffBin, output string, params map[string]string) []string {
 // parseProgressLines reads FFmpeg stderr line by line, extracts out_time_ms,
 // and reports progress to the main node. Exits when the reader is closed.
 func parseProgressLines(workerID string, taskID uint64, totalDuration float64, reader io.Reader, done chan<- struct{}) {
-	defer close(done)
-
 	re := regexp.MustCompile(`out_time_ms=(\d+)`)
 	scanner := bufio.NewScanner(reader)
 	lastProgress := 0.0
@@ -371,11 +379,14 @@ func parseProgressLines(workerID string, taskID uint64, totalDuration float64, r
 			if progress-lastProgress >= 0.01 || progress >= 1.0 {
 				lastProgress = progress
 				if !reportProgress(workerID, taskID, progress) {
-					return // server signalled cancellation
+					close(done) // signal cancellation to processTask
+					return
 				}
 			}
 		}
 	}
+	// Scanner ended normally (FFmpeg exited) — done is intentionally NOT closed
+	// so the select in processTask does not race with waitDone.
 }
 
 // reportProgress sends a progress update. Returns false if the server signals cancellation (HTTP 409).
@@ -390,7 +401,7 @@ func reportProgress(workerID string, taskID uint64, progress float64) bool {
 	req.Header.Set("Authorization", "Bearer "+*apiToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("progress report failed for task %d: %v", taskID, err)
 		return true // network error, keep going
@@ -419,7 +430,7 @@ func uploadOutput(workerID string, taskID uint64, data []byte) error {
 	req.Header.Set("Authorization", "Bearer "+*apiToken)
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -451,7 +462,7 @@ func reportCompletion(workerID string, taskID uint64, success bool, errMsg strin
 	}
 	req.Header.Set("Authorization", "Bearer "+*apiToken)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("completion report failed for task %d: %v", taskID, err)
 		return
@@ -485,7 +496,7 @@ func doJSON(method, path string, body any) ([]byte, error) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
