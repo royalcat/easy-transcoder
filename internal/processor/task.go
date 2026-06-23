@@ -77,7 +77,12 @@ func newTask(id uint64, inputPath, presetName string) *task {
 }
 
 // MarkProcessing transitions the task to processing state.
+// If the task was cancelled, the transition is skipped to avoid
+// overwriting the cancelled status (TOCTOU race with CancelTask).
 func (t *task) MarkProcessing() {
+	if t.cancelled.Load() {
+		return
+	}
 	t.Status = TaskStatusProcessing
 	t.startedAt = time.Now()
 }

@@ -9,7 +9,13 @@ import (
 
 // GetTask retrieves a task by ID.
 func (p *Processor) GetTask(id uint64) TaskState {
-	return p.tasks[id].State()
+	p.tasksMu.RLock()
+	defer p.tasksMu.RUnlock()
+	task, ok := p.tasks[id]
+	if !ok {
+		return TaskState{}
+	}
+	return task.State()
 }
 
 // FailTask marks a task as failed with the given error.

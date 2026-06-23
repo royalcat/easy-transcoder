@@ -1,4 +1,7 @@
-FROM golang:1.25 AS build
+FROM --platform=$BUILDPLATFORM  golang:1.25 AS build
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -14,7 +17,7 @@ COPY ./templui ./templui
 
 # Build with cache
 RUN --mount=type=cache,mode=0777,target=/go/pkg/mod \
-    CGO_ENABLED=0 go build -o /easy-transcoder ./cmd/easy-transcoder
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /easy-transcoder ./cmd/easy-transcoder
 
 FROM linuxserver/ffmpeg:version-8.1-cli
 

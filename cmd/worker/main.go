@@ -300,12 +300,12 @@ func processTask(workerID string, task *acquireTaskResponse) {
 	case waitErr = <-waitDone:
 		// FFmpeg completed normally
 	case <-progressDone:
-		// Progress goroutine exited early — cancellation from server
-		log.Printf("cancelling task %d", task.ID)
-		cmd.Process.Kill()
-		waitErr = <-waitDone
+		// Server signalled cancellation via 409 on progress report.
+		// Kill FFmpeg and stop — the server already marked the task
+		// as cancelled, so no completion report is needed.
 		log.Printf("task %d cancelled by server", task.ID)
-		reportCompletion(workerID, task.ID, false, "cancelled by server")
+		cmd.Process.Kill()
+		<-waitDone
 		return
 	}
 	<-progressDone
@@ -380,17 +380,25 @@ func parseProgressLines(workerID string, taskID uint64, totalDuration float64, r
 
 // reportProgress sends a progress update. Returns false if the server signals cancellation (HTTP 409).
 func reportProgress(workerID string, taskID uint64, progress float64) bool {
-	body := map[string]any{
+	jsonData, _ := json.Marshal(map[string]any{
 		"worker_id": workerID,
 		"task_id":   taskID,
 		"progress":  progress,
-	}
-	_, err := doJSON("POST", "/api/v1/worker/task/progress", body)
+	})
+
+	req, _ := http.NewRequest("POST", *serverURL+"/api/v1/worker/task/progress", bytes.NewReader(jsonData))
+	req.Header.Set("Authorization", "Bearer "+*apiToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		if strings.Contains(err.Error(), "409") {
-			return false
-		}
 		log.Printf("progress report failed for task %d: %v", taskID, err)
+		return true // network error, keep going
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		return false // server says cancel
 	}
 	return true
 }

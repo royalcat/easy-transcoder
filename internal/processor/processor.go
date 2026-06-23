@@ -124,13 +124,22 @@ func (p *Processor) AddTask(path, preset string) {
 // CancelTask attempts to cancel a task by ID.
 func (p *Processor) CancelTask(id uint64) error {
 	p.logger.Info("cancelling task", "task_id", id)
-	p.tasks[id].cancelled.Store(true)
-	p.tasks[id].MarkCancelled()
-	if p.tasks[id].cmd != nil {
-		p.tasks[id].cmd.Process.Signal(syscall.SIGTERM)
+
+	p.tasksMu.RLock()
+	task, ok := p.tasks[id]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %d not found", id)
 	}
 
-	return nil // Task not found
+	task.cancelled.Store(true)
+	task.MarkCancelled()
+
+	if task.cmd != nil && task.cmd.Process != nil {
+		task.cmd.Process.Signal(syscall.SIGTERM)
+	}
+
+	return nil
 }
 
 // IsCancelled returns true if the task's cancelled flag is set.
@@ -201,6 +210,13 @@ func (p *Processor) DequeueForWorker(workerID string) (*AcquiredTask, error) {
 			return nil, err
 		}
 
+		// Final check: if the task was cancelled during probe/setup,
+		// do not hand it out to a worker.
+		if task.cancelled.Load() {
+			task.MarkCancelled()
+			return nil, nil
+		}
+
 		return &AcquiredTask{
 			ID:            task.ID,
 			Preset:        preset.Name,
@@ -262,6 +278,11 @@ func (p *Processor) RequeueTask(taskID uint64) error {
 	if !ok {
 		return fmt.Errorf("task %d not found", taskID)
 	}
+	// Do not requeue a cancelled task.
+	if task.cancelled.Load() {
+		task.MarkCancelled()
+		return nil
+	}
 	task.Status = TaskStatusPending
 	task.WorkerID = ""
 	task.Progress = 0
@@ -303,6 +324,10 @@ func (p *Processor) WriteTaskOutput(taskID uint64, reader io.Reader) (string, er
 	p.tasksMu.RUnlock()
 	if !ok {
 		return "", fmt.Errorf("task %d not found", taskID)
+	}
+
+	if task.cancelled.Load() {
+		return "", fmt.Errorf("task %d was cancelled", taskID)
 	}
 
 	f, err := os.Create(task.TempFile)
