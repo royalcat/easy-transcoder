@@ -133,8 +133,7 @@ func (m *Manager) GetWorkers() []WorkerState {
 
 // ShouldCancelTask returns true if the given task has been cancelled on the main node.
 func (m *Manager) ShouldCancelTask(taskID uint64) bool {
-	state := m.processor.GetTask(taskID)
-	return state.Status == processor.TaskStatusCancelled
+	return m.processor.IsCancelled(taskID)
 }
 
 // GetWorkerName returns the hostname for a worker ID, or the ID itself if not found.

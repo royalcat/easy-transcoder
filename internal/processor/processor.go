@@ -133,6 +133,17 @@ func (p *Processor) CancelTask(id uint64) error {
 	return nil // Task not found
 }
 
+// IsCancelled returns true if the task's cancelled flag is set.
+func (p *Processor) IsCancelled(taskID uint64) bool {
+	p.tasksMu.RLock()
+	task, ok := p.tasks[taskID]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return false
+	}
+	return task.cancelled.Load()
+}
+
 // SetOnWaitingForResolutionCallback sets a callback that gets called when a task transitions to waiting_for_resolution
 func (p *Processor) SetOnWaitingForResolutionCallback(callback func(TaskState)) {
 	p.onWaitingForResolution = callback
