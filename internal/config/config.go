@@ -23,6 +23,26 @@ type LogConfig struct {
 	Format string `koanf:"format"`
 }
 
+// WorkerConfig holds configuration for the remote worker system.
+type WorkerConfig struct {
+	// APIToken is the shared secret used to authenticate workers.
+	// When empty, the worker API is disabled.
+	APIToken string `koanf:"api_token"`
+
+	// HeartbeatTimeout is the number of seconds without a heartbeat before
+	// a worker is considered dead and its tasks are failed.
+	HeartbeatTimeout int `koanf:"heartbeat_timeout"`
+
+	// HeartbeatInterval is the suggested interval (in seconds) at which
+	// workers should send heartbeats. Communicated to workers on registration.
+	HeartbeatInterval int `koanf:"heartbeat_interval"`
+
+	// DisableLocalProcessing prevents the built-in local worker from
+	// processing tasks. When true, only registered remote workers
+	// will handle the queue. Requires api_token to be set.
+	DisableLocalProcessing bool `koanf:"disable_local_processing"`
+}
+
 // Config holds the application configuration
 type Config struct {
 	CustomFFmpegURL string `koanf:"custom_ffmpeg"`
@@ -32,6 +52,8 @@ type Config struct {
 	Logging  LogConfig             `koanf:"logging"`
 
 	TranscodingNiceness int `koanf:"transcoding_niceness"`
+
+	Worker WorkerConfig `koanf:"worker"`
 }
 
 // GetLogLevel returns the slog.Level based on the configured string level

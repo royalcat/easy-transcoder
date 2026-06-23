@@ -25,4 +25,8 @@ var DefaultConfig = Config{
 		Level:  "info",
 		Format: "text",
 	},
+	Worker: WorkerConfig{
+		HeartbeatTimeout:  30,
+		HeartbeatInterval: 10,
+	},
 }

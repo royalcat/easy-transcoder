@@ -21,6 +21,7 @@ import (
 	"github.com/royalcat/easy-transcoder/internal/config"
 	"github.com/royalcat/easy-transcoder/internal/processor"
 	"github.com/royalcat/easy-transcoder/internal/transcoding"
+	"github.com/royalcat/easy-transcoder/internal/worker"
 	"github.com/royalcat/easy-transcoder/ui/elements"
 	"github.com/royalcat/easy-transcoder/ui/pages"
 )
@@ -41,12 +42,24 @@ func main() {
 	slog.Info("starting easy-transcoder")
 
 	q := processor.NewProcessor(cfg, logger)
-	q.StartWorker()
+
+	// Start local worker only if not disabled (worker-only mode)
+	if cfg.Worker.DisableLocalProcessing {
+		logger.Info("local processing disabled, only remote workers will process tasks")
+	} else {
+		q.StartWorker()
+	}
+
+	// Create worker manager and API handlers
+	wm := worker.NewManager(cfg.Worker, q, logger)
+	wh := worker.NewAPIHandlers(wm, logger)
 
 	s := &server{
-		Config:    cfg,
-		Processor: q,
-		logger:    logger,
+		Config:        cfg,
+		Processor:     q,
+		logger:        logger,
+		workerManager: wm,
+		workerAPI:     wh,
 	}
 
 	// Set up auto-reject callback
@@ -54,6 +67,12 @@ func main() {
 
 	// Start periodic auto-reject scanner
 	go s.startPeriodicAutoRejectScanner()
+
+	// Start worker disconnection scanner if enabled
+	if wm.Enabled() {
+		wm.StartDisconnectionScanner()
+		logger.Info("worker API enabled")
+	}
 
 	templHandler := func(c templ.Component) http.Handler {
 		return templ.Handler(c,
@@ -81,6 +100,7 @@ func main() {
 	mux.Handle("GET /elements/fileinfo", http.HandlerFunc(s.getfileinfo))
 	mux.Handle("GET /elements/queue", http.HandlerFunc(s.getqueue))
 	mux.Handle("GET /elements/status", http.HandlerFunc(s.getstatus))
+	mux.Handle("GET /elements/workers", http.HandlerFunc(s.getWorkersStatus))
 
 	// Replaced the single VMAF endpoint with three separate metric endpoints
 	mux.Handle("GET /metrics/vmaf", http.HandlerFunc(s.getVMAF))
@@ -95,6 +115,21 @@ func main() {
 	mux.Handle("POST /submit/cancel", http.HandlerFunc(s.submitTaskCancellation))
 
 	mux.Handle("POST /settings/auto-reject-larger", http.HandlerFunc(s.submitAutoRejectSetting))
+
+	// Worker API routes (only accessible when api_token is configured)
+	if wm.Enabled() {
+		// auth wraps a handler with the worker auth middleware.
+		auth := func(h http.HandlerFunc) http.Handler {
+			return wm.AuthMiddleware(h)
+		}
+
+		mux.Handle("POST /api/v1/worker/register", auth(wh.HandleRegister))
+		mux.Handle("POST /api/v1/worker/heartbeat", auth(wh.HandleHeartbeat))
+		mux.Handle("POST /api/v1/worker/task/acquire", auth(wh.HandleAcquireTask))
+		mux.Handle("GET /api/v1/worker/task/input/{taskID}", auth(wh.HandleTaskInput))
+		mux.Handle("POST /api/v1/worker/task/progress", auth(wh.HandleTaskProgress))
+		mux.Handle("POST /api/v1/worker/task/complete", auth(wh.HandleTaskComplete))
+	}
 
 	// mux.Handle("GET /elements/profileselector", http.HandlerFunc(s.getprofile))
 
@@ -177,6 +212,9 @@ type server struct {
 	Processor *processor.Processor
 	logger    *slog.Logger
 
+	workerManager *worker.Manager
+	workerAPI     *worker.APIHandlers
+
 	// Auto-reject setting and mutex for thread safety
 	autoRejectMu     sync.RWMutex
 	autoRejectLarger bool
@@ -223,15 +261,40 @@ func (s *server) getstatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *server) getWorkersStatus(w http.ResponseWriter, r *http.Request) {
+	if s.workerManager == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	workerStates := s.workerManager.GetWorkers()
+	workers := make([]elements.WorkerInfo, len(workerStates))
+	for i, ws := range workerStates {
+		workers[i] = elements.WorkerInfo{
+			ID:            ws.ID,
+			Hostname:      ws.Hostname,
+			FFmpegVersion: ws.FFmpegVersion,
+			Alive:         ws.Alive,
+		}
+	}
+
+	err := elements.WorkersStatus(workers).Render(r.Context(), w)
+	if err != nil {
+		s.logger.Error("workers status render error", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func (s *server) queue() []elements.TaskState {
 	queue := []elements.TaskState{}
 	for _, task := range s.Processor.GetQueue() {
-		queue = append(queue, mapTaskState(task))
+		queue = append(queue, s.mapTaskState(task))
 	}
 	return queue
 }
 
-func mapTaskState(task processor.TaskState) elements.TaskState {
+func (s *server) mapTaskState(task processor.TaskState) elements.TaskState {
 	errorMessage := ""
 	if task.Error != nil {
 		errorMessage = task.Error.Error()
@@ -243,6 +306,11 @@ func mapTaskState(task processor.TaskState) elements.TaskState {
 	}
 	if info, err := os.Stat(task.TempFile); err == nil {
 		tempSize = info.Size()
+	}
+
+	workerName := ""
+	if task.WorkerID != "" && s.workerManager != nil {
+		workerName = s.workerManager.GetWorkerName(task.WorkerID)
 	}
 
 	return elements.TaskState{
@@ -257,6 +325,7 @@ func mapTaskState(task processor.TaskState) elements.TaskState {
 		TempFileSize:  tempSize,
 		CreatedAt:     task.CreateAt,
 		Error:         errorMessage,
+		WorkerName:    workerName,
 	}
 }
 
@@ -431,7 +500,7 @@ func (s *server) pageResolver(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the task and populate TaskState with rich information
 	for _, task := range s.Processor.GetQueue() {
 		if task.ID == uint64(taskId) {
-			taskState = mapTaskState(task)
+			taskState = s.mapTaskState(task)
 			break
 		}
 	}

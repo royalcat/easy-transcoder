@@ -93,13 +93,14 @@ make generate
 - [x] VMAF
 - [ ] Browser Notifications
 - [x] ffmpeg version check
-- [ ] download custom ffmpeg binary
+- [x] download custom ffmpeg binary
 - [x] cpu usage
-- [ ] SSE for queue updates
+- [x] SSE for queue updates
 - [ ] task mutiprocessing
 - [ ] S3 (probably, using s3fs or similar may be an easier option)
 - [ ] Two-pass encoding
 - [ ] Dynamic parameters for profiles
+- [ ] Transcoding offload
 
 ### Not planned
 

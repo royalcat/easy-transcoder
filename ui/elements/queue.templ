@@ -32,6 +32,9 @@ type TaskState struct {
 	Progress float64
 	Error    string // Error message if task failed
 
+	// Worker assignment
+	WorkerName string // Hostname of the worker processing this task
+
 	// Additional metadata
 	CreatedAt time.Time
 }
@@ -123,6 +126,9 @@ templ taskCard(task TaskState) {
 				<div class="flex flex-col w-full">
 					<p class="text-sm text-muted-foreground">ID: { task.ID }</p>
 					<p class="text-sm text-muted-foreground">Preset: { task.Preset }</p>
+						if task.Status == processor.TaskStatusProcessing && task.WorkerName != "" {
+							<p class="text-sm text-muted-foreground">Worker: <span class="font-mono text-primary">{ task.WorkerName }</span></p>
+						}
 					if !task.CreatedAt.IsZero() {
 						<p class="text-sm text-muted-foreground">Created: { task.CreatedAt.Format("Jan 02 15:04:05") }</p>
 					}

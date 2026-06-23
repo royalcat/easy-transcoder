@@ -53,6 +53,9 @@ type task struct {
 	Progress float64    // Processing progress (0.0 to 1.0)
 	Error    error      // Error information if task failed
 
+	// Worker assignment
+	WorkerID string // ID of the worker processing this task (empty means local)
+
 	// Runtime data
 	cancelled atomic.Bool // Indicates if the task was cancelled
 	cmd       *exec.Cmd   // FFmpeg command reference
@@ -152,13 +155,16 @@ func (t *task) Cancel() error {
 
 func (t *task) State() TaskState {
 	return TaskState{
-		ID:       t.ID,
-		CreateAt: t.CreateAt,
-		Input:    t.Input,
-		Preset:   t.Preset,
-		TempFile: t.TempFile,
-		Status:   t.Status,
-		Progress: t.Progress,
-		Error:    t.Error,
+		ID:        t.ID,
+		CreateAt:  t.CreateAt,
+		StartedAt: t.startedAt,
+		EndedAt:   t.endedAt,
+		Input:     t.Input,
+		Preset:    t.Preset,
+		TempFile:  t.TempFile,
+		Status:    t.Status,
+		Progress:  t.Progress,
+		Error:     t.Error,
+		WorkerID:  t.WorkerID,
 	}
 }

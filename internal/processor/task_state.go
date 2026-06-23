@@ -2,6 +2,7 @@ package processor
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 	"time"
 )
@@ -9,6 +10,19 @@ import (
 // GetTask retrieves a task by ID.
 func (p *Processor) GetTask(id uint64) TaskState {
 	return p.tasks[id].State()
+}
+
+// FailTask marks a task as failed with the given error.
+// Used by the dead worker scanner to fail tasks assigned to disconnected workers.
+func (p *Processor) FailTask(taskID uint64, err error) error {
+	p.tasksMu.RLock()
+	task, ok := p.tasks[taskID]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %d not found", taskID)
+	}
+	task.MarkFailed(err)
+	return nil
 }
 
 // GetTask retrieves a task by ID.
@@ -41,4 +55,8 @@ type TaskState struct {
 	Status   TaskStatus // Current state of the task
 	Progress float64    // Processing progress (0.0 to 1.0)
 	Error    error      // Error information if task failed
+
+	// Worker assignment
+	WorkerID   string // ID of the worker processing this task
+	WorkerName string // Human-readable worker hostname (populated by caller)
 }

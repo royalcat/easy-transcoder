@@ -6,8 +6,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-
-	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
 // only this function can modify not atomic task status
@@ -22,29 +20,15 @@ func (p *Processor) processTask(task *task) {
 
 	task.MarkProcessing()
 
-	// Probe the input file
+	// Probe the input file and validate the preset
 	log.Info("probing input file")
-	a, err := ffmpeg.Probe(task.Input)
+	totalDuration, _, preset, err := p.probeAndValidate(task)
 	if err != nil {
 		log.Error("probe failed", "error", err)
 		task.MarkFailed(fmt.Errorf("failed to probe input file: %s", err))
 		return
 	}
-
-	totalDuration, err := probeDuration(a)
-	if err != nil {
-		log.Error("failed to parse duration", "error", err)
-		task.MarkFailed(fmt.Errorf("failed to parse duration: %s", err))
-		return
-	}
 	log.Debug("media duration detected", "duration", totalDuration)
-
-	preset := p.getProfile(task.Preset)
-	if preset.Name == "" {
-		log.Error("invalid preset")
-		task.MarkFailed(fmt.Errorf("invalid preset: %s", task.Preset))
-		return
-	}
 
 	// Create temporary output file
 	task.TempFile, err = p.tempFile(task.Input)

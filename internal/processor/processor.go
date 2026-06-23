@@ -1,12 +1,17 @@
 package processor
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
+
+	ffmpeg "github.com/u2takey/ffmpeg-go"
 
 	"github.com/royalcat/easy-transcoder/internal/config"
 	"github.com/royalcat/easy-transcoder/internal/transcoding"
@@ -120,6 +125,7 @@ func (p *Processor) AddTask(path, preset string) {
 func (p *Processor) CancelTask(id uint64) error {
 	p.logger.Info("cancelling task", "task_id", id)
 	p.tasks[id].cancelled.Store(true)
+	p.tasks[id].MarkCancelled()
 	if p.tasks[id].cmd != nil {
 		p.tasks[id].cmd.Process.Signal(syscall.SIGTERM)
 	}
@@ -141,4 +147,163 @@ func (p *Processor) getProfile(name string) transcoding.Profile {
 	}
 	p.logger.Warn("profile not found", "profile_name", name)
 	return transcoding.Profile{}
+}
+
+// AcquiredTask is returned to a remote worker when it acquires a task from the queue.
+type AcquiredTask struct {
+	ID            uint64            `json:"task_id"`
+	Preset        string            `json:"preset"`
+	Params        map[string]string `json:"params"`
+	FFmpegPath    string            `json:"ffmpeg_path"`
+	InputSize     int64             `json:"input_size"`
+	TotalDuration float64           `json:"total_duration"`
+	OutputExt     string            `json:"output_ext"`
+}
+
+// DequeueForWorker atomically takes the next pending task from the channel
+// and assigns it to a remote worker. Returns nil if no tasks are available.
+func (p *Processor) DequeueForWorker(workerID string) (*AcquiredTask, error) {
+	select {
+	case task := <-p.queue:
+		if task.cancelled.Load() {
+			task.MarkCancelled()
+			return nil, nil
+		}
+
+		task.WorkerID = workerID
+		task.MarkProcessing()
+
+		p.logger.Info("task assigned to remote worker",
+			"task_id", task.ID, "worker_id", workerID)
+
+		duration, size, preset, err := p.probeAndValidate(task)
+		if err != nil {
+			task.MarkFailed(err)
+			return nil, err
+		}
+
+		// Create temp file path for output
+		task.TempFile, err = p.tempFile(task.Input)
+		if err != nil {
+			p.logger.Error("failed to create temp file", "task_id", task.ID, "error", err)
+			task.MarkFailed(fmt.Errorf("failed to create temp file: %w", err))
+			return nil, err
+		}
+
+		return &AcquiredTask{
+			ID:            task.ID,
+			Preset:        preset.Name,
+			Params:        preset.Params,
+			FFmpegPath:    p.ffmpegBinary(),
+			InputSize:     size,
+			TotalDuration: duration,
+			OutputExt:     path.Ext(task.Input),
+		}, nil
+	default:
+		return nil, nil // No tasks available
+	}
+}
+
+// probeAndValidate probes the input file and validates the preset.
+// Returns duration, file size, and the resolved profile.
+func (p *Processor) probeAndValidate(task *task) (float64, int64, transcoding.Profile, error) {
+	a, err := ffmpeg.Probe(task.Input)
+	if err != nil {
+		return 0, 0, transcoding.Profile{}, fmt.Errorf("probe failed: %w", err)
+	}
+
+	duration, err := probeDuration(a)
+	if err != nil {
+		return 0, 0, transcoding.Profile{}, fmt.Errorf("duration parse failed: %w", err)
+	}
+
+	preset := p.getProfile(task.Preset)
+	if preset.Name == "" {
+		return 0, 0, transcoding.Profile{}, fmt.Errorf("invalid preset: %s", task.Preset)
+	}
+
+	info, err := os.Stat(task.Input)
+	if err != nil {
+		return 0, 0, transcoding.Profile{}, fmt.Errorf("stat failed: %w", err)
+	}
+
+	return duration, info.Size(), preset, nil
+}
+
+// UpdateProgress sets the progress for a task (called by remote workers).
+func (p *Processor) UpdateProgress(taskID uint64, progress float64) error {
+	p.tasksMu.RLock()
+	task, ok := p.tasks[taskID]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %d not found", taskID)
+	}
+	task.SetProgress(progress)
+	return nil
+}
+
+// RequeueTask resets a task to pending and puts it back in the queue.
+// Used when a worker disconnects so another worker can pick up the task.
+func (p *Processor) RequeueTask(taskID uint64) error {
+	p.tasksMu.RLock()
+	task, ok := p.tasks[taskID]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %d not found", taskID)
+	}
+	task.Status = TaskStatusPending
+	task.WorkerID = ""
+	task.Progress = 0
+	p.queue <- task
+	p.logger.Info("task requeued after worker disconnect", "task_id", taskID)
+	return nil
+}
+
+// CompleteTask transitions a remotely-processed task to its terminal state.
+func (p *Processor) CompleteTask(taskID uint64, success bool, errMsg string) error {
+	p.tasksMu.RLock()
+	task, ok := p.tasks[taskID]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %d not found", taskID)
+	}
+
+	// Reject completion if the task was cancelled
+	if task.cancelled.Load() {
+		return fmt.Errorf("task %d was cancelled", taskID)
+	}
+
+	if !success {
+		task.MarkFailed(fmt.Errorf("%s", errMsg))
+		return nil
+	}
+
+	task.MarkWaitingForResolution()
+	if p.onWaitingForResolution != nil {
+		p.onWaitingForResolution(task.State())
+	}
+	return nil
+}
+
+// WriteTaskOutput writes the remote worker's output stream to the task's temp file.
+func (p *Processor) WriteTaskOutput(taskID uint64, reader io.Reader) (string, error) {
+	p.tasksMu.RLock()
+	task, ok := p.tasks[taskID]
+	p.tasksMu.RUnlock()
+	if !ok {
+		return "", fmt.Errorf("task %d not found", taskID)
+	}
+
+	f, err := os.Create(task.TempFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, reader); err != nil {
+		os.Remove(task.TempFile)
+		return "", fmt.Errorf("failed to write output data: %w", err)
+	}
+
+	return task.TempFile, nil
 }

@@ -62,3 +62,36 @@ func getCPUUsage() float64 {
 	}
 	return vals[0]
 }
+
+// WorkerInfo holds public information about a remote worker for the UI.
+type WorkerInfo struct {
+	ID            string
+	Hostname      string
+	FFmpegVersion string
+	Alive         bool
+}
+
+templ WorkersStatus(workers []WorkerInfo) {
+	<div
+		id="workers-status"
+		hx-get="/elements/workers"
+		hx-trigger="every 5s"
+		hx-swap="outerHTML"
+	>
+		if len(workers) == 0 {
+			<div class="text-sm text-gray-600 dark:text-gray-400 font-mono">No remote workers</div>
+		} else {
+			for _, w := range workers {
+				<div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
+					<span class={ "inline-block w-2 h-2 rounded-full", templ.KV("bg-green-500", w.Alive), templ.KV("bg-red-500", !w.Alive) }></span>
+					<span>{ w.Hostname }</span>
+					if w.Alive {
+						<span class="text-xs">({ w.FFmpegVersion })</span>
+					} else {
+						<span class="text-xs text-red-500">(offline)</span>
+					}
+				</div>
+			}
+		}
+	</div>
+}
