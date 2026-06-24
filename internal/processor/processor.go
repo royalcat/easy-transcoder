@@ -340,6 +340,14 @@ func (p *Processor) WriteTaskOutput(taskID uint64, reader io.Reader) (string, er
 		os.Remove(task.TempFile)
 		return "", fmt.Errorf("failed to write output data: %w", err)
 	}
+	f.Close()
+
+	// Sanity check: validate the output file with ffprobe.
+	// A valid transcode should always produce a probe-able file.
+	if _, err := transcoding.Probe(task.TempFile); err != nil {
+		os.Remove(task.TempFile)
+		return "", fmt.Errorf("output validation failed (ffprobe): %w", err)
+	}
 
 	return task.TempFile, nil
 }
