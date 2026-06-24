@@ -2,10 +2,8 @@ package worker
 
 import (
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"strconv"
 )
 
@@ -83,7 +81,9 @@ func (h *APIHandlers) HandleAcquireTask(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleTaskInput handles GET /api/v1/worker/task/input/{taskID}
-// Streams the input file bytes to the worker for pipe-based transcoding.
+// and GET /api/v1/worker/task/input/{taskID}/{file}.
+// Serves the task's input file using http.ServeFile for proper range
+// requests, content-type detection, and sendfile optimization.
 func (h *APIHandlers) HandleTaskInput(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := r.PathValue("taskID")
 	taskID, err := strconv.ParseUint(taskIDStr, 10, 64)
@@ -93,25 +93,12 @@ func (h *APIHandlers) HandleTaskInput(w http.ResponseWriter, r *http.Request) {
 	}
 
 	taskState := h.manager.processor.GetTask(taskID)
-
-	info, err := os.Stat(taskState.Input)
-	if err != nil {
-		h.logger.Error("input file stat failed", "task_id", taskID, "path", taskState.Input, "error", err)
-		http.Error(w, "input file not found", http.StatusInternalServerError)
+	if taskState.Input == "" {
+		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
 
-	file, err := os.Open(taskState.Input)
-	if err != nil {
-		h.logger.Error("input file open failed", "task_id", taskID, "error", err)
-		http.Error(w, "cannot open input file", http.StatusInternalServerError)
-		return
-	}
-	defer file.Close()
-
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
-	io.Copy(w, file)
+	http.ServeFile(w, r, taskState.Input)
 }
 
 // HandleTaskProgress handles POST /api/v1/worker/task/progress

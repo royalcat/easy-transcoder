@@ -1,7 +1,7 @@
 // Command easy-transcoder-worker is a remote transcoding worker that connects
 // to an easy-transcoder main node, acquires transcoding tasks, processes them
-// using FFmpeg (input streamed via stdin pipe, output written to temp file),
-// and streams results back.
+// using FFmpeg (input read via native HTTP, output written to temp file),
+// and uploads results back.
 //
 // Usage:
 //
@@ -208,8 +208,8 @@ func acquireTask(workerID string) *acquireTaskResponse {
 }
 
 // processTask processes a single transcoding task.
-// Input is streamed from the main node directly into FFmpeg's stdin.
-// Output is written to a temp file (MP4 needs seekable output), then uploaded.
+// FFmpeg reads the input directly from the main node via HTTP (native URL support).
+// Output is written to a temp file, then uploaded.
 func processTask(workerID string, task *acquireTaskResponse) {
 	taskID := task.ID
 	currentTaskID = &taskID
@@ -231,43 +231,25 @@ func processTask(workerID string, task *acquireTaskResponse) {
 	}
 	outputPath := tempDir + "/output" + ext
 
-	// Start HTTP request to stream input from main node
-	log.Printf("streaming input for task %d (%d bytes)", task.ID, task.InputSize)
-	inputReq, err := http.NewRequest("GET",
-		*serverURL+"/api/v1/worker/task/input/"+strconv.FormatUint(task.ID, 10), nil)
-	if err != nil {
-		log.Printf("input request failed for task %d: %v", task.ID, err)
-		reportCompletion(workerID, task.ID, false, err.Error())
-		return
+	// Construct input URL for FFmpeg's native HTTP reader.
+	// The file extension in the URL path lets FFmpeg auto-detect the container format.
+	inputExt := task.OutputExt
+	if inputExt == "" {
+		inputExt = ".mp4"
 	}
-	inputReq.Header.Set("Authorization", "Bearer "+*apiToken)
+	inputURL := *serverURL + "/api/v1/worker/task/input/" +
+		strconv.FormatUint(task.ID, 10) + "/input" + inputExt
 
-	inputResp, err := httpClient.Do(inputReq)
-	if err != nil {
-		log.Printf("input request failed for task %d: %v", task.ID, err)
-		reportCompletion(workerID, task.ID, false, err.Error())
-		return
-	}
-	defer inputResp.Body.Close()
-
-	if inputResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(inputResp.Body)
-		log.Printf("input request returned %d for task %d: %s", inputResp.StatusCode, task.ID, string(body))
-		reportCompletion(workerID, task.ID, false, fmt.Sprintf("server returned %d", inputResp.StatusCode))
-		return
-	}
-
-	// Build FFmpeg command — input via pipe:0, output to temp file
+	// Build FFmpeg command — input via HTTP URL, output to temp file
 	ffBin := task.FFmpegPath
 	if ffBin == "" {
 		ffBin = *ffmpegPath
 	}
 
-	args := buildFFmpegArgs(ffBin, outputPath, task.Params)
+	args := buildFFmpegArgs(ffBin, inputURL, outputPath, task.Params, *apiToken)
 	log.Printf("running ffmpeg: %s", strings.Join(args, " "))
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdin = inputResp.Body
 
 	// Progress on stdout (clean, no FFmpeg errors mixed in)
 	stdout, err := cmd.StdoutPipe()
@@ -347,9 +329,14 @@ func processTask(workerID string, task *acquireTaskResponse) {
 }
 
 // buildFFmpegArgs constructs an FFmpeg command line.
-// Input is read from stdin (pipe:0), output goes to the given file path.
-func buildFFmpegArgs(ffBin, output string, params map[string]string) []string {
-	args := []string{ffBin, "-progress", "pipe:1", "-i", "pipe:0", "-map", "0"}
+// input may be a local file path, "pipe:0", or an HTTP URL.
+// Output goes to the given file path. Progress is written to stdout (pipe:1).
+func buildFFmpegArgs(ffBin, input, output string, params map[string]string, apiToken string) []string {
+	args := []string{ffBin, "-progress", "pipe:1"}
+	if apiToken != "" {
+		args = append(args, "-headers", "Authorization: Bearer "+apiToken)
+	}
+	args = append(args, "-i", input, "-map", "0")
 	for k, v := range params {
 		args = append(args, "-"+k, v)
 	}

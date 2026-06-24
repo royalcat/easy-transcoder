@@ -127,6 +127,9 @@ func main() {
 		mux.Handle("POST /api/v1/worker/heartbeat", auth(wh.HandleHeartbeat))
 		mux.Handle("POST /api/v1/worker/task/acquire", auth(wh.HandleAcquireTask))
 		mux.Handle("GET /api/v1/worker/task/input/{taskID}", auth(wh.HandleTaskInput))
+		// Route with file extension for FFmpeg native HTTP input.
+		// FFmpeg uses the URL extension to auto-detect the container format.
+		mux.Handle("GET /api/v1/worker/task/input/{taskID}/{file}", auth(wh.HandleTaskInput))
 		mux.Handle("POST /api/v1/worker/task/progress", auth(wh.HandleTaskProgress))
 		mux.Handle("POST /api/v1/worker/task/complete", auth(wh.HandleTaskComplete))
 	}
